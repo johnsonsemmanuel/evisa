@@ -31,7 +31,6 @@ const tierIcons: Record<string, React.ReactNode> = {
   standard: <Clock size={20} className="text-text-muted" />,
   fast_track: <TrendingUp size={20} className="text-warning" />,
   express: <Crown size={20} className="text-accent" />,
-  ultra_express: <AlertTriangle size={20} className="text-danger" />,
 };
 
 function DynField({ field, value, onChange, error }: { field: VisaFormField; value: string; onChange: (v: string) => void; error?: string }) {
@@ -182,22 +181,11 @@ function NewApplicationPageInner() {
     if (isRestored.current) return;
     isRestored.current = true;
 
-    const saved = getSavedDraft();
-    if (saved && Object.values(saved.form).some(v => v)) {
-      setForm(prev => ({ ...prev, ...saved.form }));
-      setCurrentStep(saved.step);
-      if (saved.appId) {
-        api.get(`/applicant/applications/${saved.appId}`)
-          .then(res => setApplication(res.data.application))
-          .catch(() => { /* draft may no longer exist */ });
-      }
-      toast.success("Your saved draft has been restored", { icon: "📋" });
-    } else {
-      try {
-        const u = JSON.parse(localStorage.getItem("user") || "{}");
-        if (u.email) setForm((p) => ({ ...p, email: p.email || u.email, first_name: p.first_name || u.first_name || "", last_name: p.last_name || u.last_name || "", phone: p.phone || u.phone || "" }));
-      } catch { /* ignore */ }
-    }
+    // Draft restoring disabled per user request
+    try {
+      const u = JSON.parse(localStorage.getItem("user") || "{}");
+      if (u.email) setForm((p) => ({ ...p, email: p.email || u.email, first_name: p.first_name || u.first_name || "", last_name: p.last_name || u.last_name || "", phone: p.phone || u.phone || "" }));
+    } catch { /* ignore */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resume a specific application from the dashboard
@@ -603,7 +591,9 @@ function NewApplicationPageInner() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-accent">${fees.total.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-accent">
+                      ${fees.total > 0 ? fees.total.toFixed(2) : (260 * (form.entry_type === "multiple" ? 1.8 : 1) * (selST ? selST.fee_multiplier || 1 : 1)).toFixed(2)}
+                    </p>
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => setShowEntryTypeModal(true)} className="text-xs text-accent hover:underline cursor-pointer">Entry type</button>
                       {form.service_tier_id && <><span className="text-text-muted">•</span><button type="button" onClick={() => setShowSpeedModal(true)} className="text-xs text-accent hover:underline cursor-pointer">Speed</button></>}

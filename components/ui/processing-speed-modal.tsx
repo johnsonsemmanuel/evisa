@@ -19,7 +19,6 @@ const tierIcons: Record<string, React.ReactNode> = {
   standard: <Clock size={20} className="text-text-muted" />,
   fast_track: <TrendingUp size={20} className="text-warning" />,
   express: <Crown size={20} className="text-accent" />,
-  ultra_express: <AlertTriangle size={20} className="text-danger" />,
 };
 
 const tierIconBg: Record<string, string> = {
@@ -40,7 +39,6 @@ const tierFeatures: Record<string, string[]> = {
   standard: ["Email notifications", "3-5 business days"],
   fast_track: ["Priority queue", "24-48 hours"],
   express: ["Dedicated officer", "Same day"],
-  ultra_express: ["24/7 support", "4-6 hours"],
 };
 
 export function ProcessingSpeedModal({
@@ -107,11 +105,10 @@ export function ProcessingSpeedModal({
                   key={tier.id}
                   type="button"
                   onClick={() => onSelect(tier.id.toString())}
-                  className={`relative text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${
-                    isSelected
-                      ? `border-accent bg-accent/5 ring-4 ${tierRing[tier.code] || "ring-accent/10"}`
-                      : "border-border hover:border-accent/30 hover:bg-surface/50"
-                  }`}
+                  className={`relative text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${isSelected
+                    ? `border-accent bg-accent/5 ring-4 ${tierRing[tier.code] || "ring-accent/10"}`
+                    : "border-border hover:border-accent/30 hover:bg-surface/50"
+                    }`}
                 >
                   {isSelected && (
                     <div className="absolute top-3 right-3">
@@ -154,7 +151,7 @@ export function ProcessingSpeedModal({
               );
             })}
           </div>
-          
+
           {/* Second row for remaining items */}
           <div className="grid grid-cols-2 gap-4 mt-4">
             {serviceTiers.filter(tier => tier.is_active).slice(3).map((tier) => {
@@ -169,11 +166,10 @@ export function ProcessingSpeedModal({
                   key={tier.id}
                   type="button"
                   onClick={() => onSelect(tier.id.toString())}
-                  className={`relative text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${
-                    isSelected
-                      ? `border-accent bg-accent/5 ring-4 ${tierRing[tier.code] || "ring-accent/10"}`
-                      : "border-border hover:border-accent/30 hover:bg-surface/50"
-                  }`}
+                  className={`relative text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${isSelected
+                    ? `border-accent bg-accent/5 ring-4 ${tierRing[tier.code] || "ring-accent/10"}`
+                    : "border-border hover:border-accent/30 hover:bg-surface/50"
+                    }`}
                 >
                   {isSelected && (
                     <div className="absolute top-3 right-3">
