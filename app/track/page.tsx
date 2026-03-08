@@ -70,8 +70,8 @@ export default function TrackPage() {
             <Link href="/" className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <div className="flex items-center gap-2">
-                <img src="/gis-logo-new.png" alt="Ghana Immigration Service" width={40} height={40} className="drop-shadow-md" />
                 <img src="/gis-logo-cxytxk.png" alt="Ministry of Foreign Affairs" width={40} height={40} className="drop-shadow-md" />
+                <img src="/gis-logo-new.png" alt="Ghana Immigration Service" width={40} height={40} className="drop-shadow-md" />
               </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 tracking-wide leading-tight">Republic of Ghana</p>
