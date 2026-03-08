@@ -17,12 +17,13 @@ import {
   ChevronDown,
   Star,
   MapPin,
-  HeartHandshake,
   Phone,
   Mail,
   ChevronRight,
   Menu,
   X,
+  HelpCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 const roleRedirect: Record<string, string> = {
@@ -82,11 +83,11 @@ export default function Home() {
   }, []);
 
   const faqs = [
-    { q: "Who needs a visa to enter Ghana?", a: "Citizens of most countries require a visa. ECOWAS nationals are exempt. Check our requirements page for your specific country." },
+    { q: "Who needs a visa to enter Ghana?", a: "Citizens of most countries require a visa. ECOWAS nationals are exempt. Check the Visa Requirements page for specific country eligibility." },
     { q: "How long does the e-Visa process take?", a: "Standard processing takes 3–5 business days. Express processing is available for urgent travel within 24–48 hours." },
     { q: "What documents do I need?", a: "A valid passport (6+ months validity), passport photo, travel itinerary, proof of accommodation, and yellow fever vaccination certificate." },
-    { q: "Can I extend my visa while in Ghana?", a: "Yes. Visit the nearest Ghana Immigration Service office before your visa expires to apply for an extension." },
-    { q: "Is my payment and personal data secure?", a: "Absolutely. All data is encrypted with bank-level SSL security. We comply with international data protection standards." },
+    { q: "Can a visa be extended while in Ghana?", a: "Yes. Visit the nearest Ghana Immigration Service office before the visa expires to apply for an extension." },
+    { q: "Is payment and personal data secure?", a: "Absolutely. All data is encrypted with bank-level SSL security. The portal complies with international data protection standards." },
   ];
 
   return (
@@ -111,10 +112,11 @@ export default function Home() {
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-1">
               {[
-                { label: "Check Eligibility", href: "/check-eligibility" },
+                { label: "Home", href: "/" },
                 { label: "Visa Types", href: "#visa-types" },
-                { label: "How It Works", href: "#how-it-works" },
-                { label: "Track Status", href: "/track" },
+                { label: "Visa Requirements", href: "/visa-requirements" },
+                { label: "Track Application", href: "/track" },
+                { label: "Help", href: "/help" },
               ].map((item) => (
                 <Link
                   key={item.href}
@@ -125,12 +127,6 @@ export default function Home() {
                 </Link>
               ))}
               <div className="w-px h-6 bg-gray-200/30 mx-2" />
-              <Link
-                href="/login"
-                className={`text-sm font-medium px-3.5 py-2 rounded-lg transition-colors ${scrolled ? "text-gray-600 hover:text-gray-900" : "text-white/70 hover:text-white"}`}
-              >
-                Sign In
-              </Link>
               <Link
                 href="/register"
                 className="inline-flex items-center gap-2 bg-[#006B3F] hover:bg-[#005A34] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-[#006B3F]/20 ml-1"
@@ -150,7 +146,7 @@ export default function Home() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 shadow-xl animate-slide-down">
             <div className="px-5 py-4 space-y-1">
-              {["Visa Types|#visa-types", "How It Works|#how-it-works", "Requirements|/requirements", "Track Status|/track", "Sign In|/login"].map((item) => {
+              {["Home|/", "Visa Types|#visa-types", "Visa Requirements|/visa-requirements", "Track Application|/track", "Help|/help"].map((item) => {
                 const [label, href] = item.split("|");
                 return (
                   <Link key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
@@ -197,7 +193,7 @@ export default function Home() {
             </div>
 
             <h1 className="animate-fade-in-up delay-100 leading-[1.1] mb-6">
-              <span className="block text-xl sm:text-2xl font-medium text-white/70 mb-3">Your Gateway to Ghana</span>
+              <span className="block text-xl sm:text-2xl font-medium text-white/70 mb-3">The Gateway to Ghana</span>
               <span className="block text-5xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight">
                 e-Visa <span className="bg-gradient-to-r from-[#C8962E] via-[#D4A94B] to-[#C8962E] bg-clip-text text-transparent">Portal</span>
               </span>
@@ -214,7 +210,7 @@ export default function Home() {
             </div>
 
             <p className="animate-fade-in-up delay-300 text-base sm:text-lg text-white/50 mb-10 max-w-xl leading-relaxed">
-              Apply for your Ghana electronic visa online. Fast, secure, and fully digital — 
+              Apply for a Ghana electronic visa online. Fast, secure, and fully digital — 
               processed in as little as 3 business days.
             </p>
 
@@ -223,7 +219,7 @@ export default function Home() {
                 href="/register"
                 className="group inline-flex items-center gap-2.5 bg-[#006B3F] hover:bg-[#005A34] text-white font-bold px-8 py-4 rounded-xl transition-all shadow-xl shadow-[#006B3F]/30 text-sm sm:text-base"
               >
-                Start Your Application
+                Start Application
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
@@ -243,6 +239,18 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ═══════════════════ OFFICIAL NOTICE ═══════════════════ */}
+      <section className="bg-[#FFF8E7] border-b border-[#C8962E]/20">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8 py-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <AlertTriangle size={18} className="text-[#C8962E] shrink-0 mt-0.5 sm:mt-0" />
+            <p className="text-sm text-[#8B6914] leading-relaxed">
+              <strong>Official Government Notice:</strong> This is the official electronic visa portal of the Ghana Immigration Service. All visa applications are processed by the Ghana Immigration Service. Beware of fraudulent websites.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════════════ HOW IT WORKS ═══════════════════ */}
       <section id="how-it-works" className="py-24 lg:py-32 bg-white" ref={howItWorks.ref}>
         <div className="max-w-7xl mx-auto px-5 lg:px-8">
@@ -252,10 +260,10 @@ export default function Home() {
               <span className="text-[#006B3F] text-xs font-semibold uppercase tracking-wider">Simple Process</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
-              Get Your Visa in <span className="text-[#006B3F]">3 Easy Steps</span>
+              Get a Visa in <span className="text-[#006B3F]">3 Easy Steps</span>
             </h2>
             <p className="text-gray-500 max-w-lg mx-auto">
-              Our streamlined digital process makes applying for your Ghana visa quick and hassle-free.
+              A streamlined digital process makes applying for a Ghana visa quick and hassle-free.
             </p>
           </div>
 
@@ -265,7 +273,7 @@ export default function Home() {
                 step: "01",
                 icon: <FileText size={28} />,
                 title: "Fill Application",
-                desc: "Complete the online form with your personal details, travel plans, and upload required documents.",
+                desc: "Complete the online form with personal details, travel plans, and upload required documents.",
                 color: "#CE1126",
                 delay: "delay-100",
               },
@@ -273,7 +281,7 @@ export default function Home() {
                 step: "02",
                 icon: <CreditCard size={28} />,
                 title: "Pay & Submit",
-                desc: "Make a secure online payment. Your application is instantly submitted for processing.",
+                desc: "Make a secure online payment. The application is instantly submitted for processing.",
                 color: "#C8962E",
                 delay: "delay-300",
               },
@@ -281,7 +289,7 @@ export default function Home() {
                 step: "03",
                 icon: <CheckCircle2 size={28} />,
                 title: "Receive e-Visa",
-                desc: "Get your approved e-Visa via email. Print it or save digitally for your trip to Ghana.",
+                desc: "Receive the approved e-Visa via email. Print or save digitally for travel to Ghana.",
                 color: "#006B3F",
                 delay: "delay-500",
               },
@@ -325,21 +333,21 @@ export default function Home() {
               <span className="text-[#C8962E] text-xs font-semibold uppercase tracking-wider">Visa Categories</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
-              Choose Your <span className="text-[#C8962E]">Visa Type</span>
+              Choose a <span className="text-[#C8962E]">Visa Type</span>
             </h2>
             <p className="text-gray-500 max-w-lg mx-auto">
-              Select the visa category that best matches your purpose of travel to Ghana.
+              Select the visa category that best matches the purpose of travel to Ghana.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {[
               {
                 icon: <Plane size={24} />,
                 title: "Tourist Visa",
                 duration: "Up to 90 days",
                 price: "From $60",
-                desc: "For leisure, sightseeing, and visiting friends or family.",
+                desc: "For leisure, sightseeing, and visiting friends or family in Ghana.",
                 color: "#006B3F",
                 popular: true,
               },
@@ -348,26 +356,8 @@ export default function Home() {
                 title: "Business Visa",
                 duration: "Up to 90 days",
                 price: "From $100",
-                desc: "For business meetings, conferences, and commercial activities.",
+                desc: "For business meetings, conferences, and commercial activities in Ghana.",
                 color: "#C8962E",
-                popular: false,
-              },
-              {
-                icon: <Globe size={24} />,
-                title: "Transit Visa",
-                duration: "Up to 48 hours",
-                price: "From $40",
-                desc: "For travelers passing through Ghana to another destination.",
-                color: "#2E6B96",
-                popular: false,
-              },
-              {
-                icon: <HeartHandshake size={24} />,
-                title: "Diplomatic Visa",
-                duration: "As required",
-                price: "Varies",
-                desc: "For diplomatic passport holders on official government business.",
-                color: "#CE1126",
                 popular: false,
               },
             ].map((visa, i) => (
@@ -427,7 +417,7 @@ export default function Home() {
               <div className="space-y-4">
                 {[
                   { icon: <Star size={18} />, title: "Rich Cultural Heritage", desc: "Experience centuries-old traditions, vibrant festivals, and the warmth of Ghanaian hospitality." },
-                  { icon: <Globe size={18} />, title: "Year of Return & Beyond", desc: "Trace your roots through heritage sites, forts, and the Door of No Return at Cape Coast." },
+                  { icon: <Globe size={18} />, title: "Year of Return & Beyond", desc: "Trace roots and heritage through historic sites, forts, and the Door of No Return at Cape Coast." },
                   { icon: <Shield size={18} />, title: "Safe & Stable", desc: "One of Africa's most peaceful and democratic nations with a strong rule of law." },
                   { icon: <Plane size={18} />, title: "Easy Connectivity", desc: "Kotoka International Airport connects Ghana to major cities worldwide." },
                 ].map((feat) => (
@@ -502,7 +492,7 @@ export default function Home() {
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
               Frequently Asked <span className="text-[#2E6B96]">Questions</span>
             </h2>
-            <p className="text-gray-500">Everything you need to know about the Ghana e-Visa process.</p>
+            <p className="text-gray-500">Common questions about the Ghana e-Visa process.</p>
           </div>
 
           <div className={`space-y-3 ${faq.inView ? "animate-slide-up delay-200" : "opacity-0"}`}>
@@ -536,21 +526,21 @@ export default function Home() {
             Ready to Visit <span className="text-[#006B3F]">Ghana</span>?
           </h2>
           <p className="text-gray-500 mb-8 max-w-lg mx-auto">
-            Start your e-Visa application today. The entire process is digital, secure, and takes just minutes to complete.
+            Start an e-Visa application today. The entire process is digital, secure, and takes just minutes to complete.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/register"
               className="group inline-flex items-center gap-2.5 bg-[#006B3F] hover:bg-[#005A34] text-white font-bold px-8 py-4 rounded-xl shadow-xl shadow-[#006B3F]/20 transition-all text-sm sm:text-base"
             >
-              Begin Your Application
+              Begin Application
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
-              href="/requirements"
+              href="/visa-requirements"
               className="inline-flex items-center gap-2 border-2 border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50 font-semibold px-7 py-4 rounded-xl transition-all text-sm sm:text-base"
             >
-              View Requirements
+              View Visa Requirements
             </Link>
           </div>
         </div>
@@ -586,7 +576,7 @@ export default function Home() {
             <div>
               <h4 className="font-bold text-sm mb-4 text-gray-300 uppercase tracking-wider">Quick Links</h4>
               <ul className="space-y-2.5">
-                {["Apply for Visa|/register", "Check Requirements|/requirements", "Track Application|/track", "Sign In|/login"].map((item) => {
+                {["Apply for Visa|/register", "Visa Requirements|/visa-requirements", "Track Application|/track", "Help|/help"].map((item) => {
                   const [label, href] = item.split("|");
                   return (
                     <li key={href}>

@@ -115,10 +115,11 @@ export default function RequirementsPage() {
             </Link>
             <div className="hidden md:flex items-center gap-1">
               {[
+                { label: "Home", href: "/" },
                 { label: "Visa Types", href: "/#visa-types" },
-                { label: "How It Works", href: "/#how-it-works" },
-                { label: "Requirements", href: "/requirements", active: true },
-                { label: "Track Status", href: "/track" },
+                { label: "Visa Requirements", href: "/visa-requirements", active: true },
+                { label: "Track Application", href: "/track" },
+                { label: "Help", href: "/help" },
               ].map((item) => (
                 <Link
                   key={item.href}
@@ -131,7 +132,6 @@ export default function RequirementsPage() {
                 </Link>
               ))}
               <div className="w-px h-6 bg-gray-200 mx-2" />
-              <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3.5 py-2 rounded-lg hover:bg-gray-50 transition-colors">Sign In</Link>
               <Link href="/register" className="inline-flex items-center gap-2 bg-[#006B3F] hover:bg-[#005A34] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-[#006B3F]/20 ml-1">
                 Apply Now <ArrowRight size={14} />
               </Link>
@@ -144,7 +144,7 @@ export default function RequirementsPage() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 shadow-xl animate-slide-down">
             <div className="px-5 py-4 space-y-1">
-              {["Visa Types|/#visa-types", "How It Works|/#how-it-works", "Requirements|/requirements", "Track Status|/track", "Sign In|/login"].map((item) => {
+              {["Home|/", "Visa Types|/#visa-types", "Visa Requirements|/visa-requirements", "Track Application|/track", "Help|/help"].map((item) => {
                 const [label, href] = item.split("|");
                 return <Link key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">{label}</Link>;
               })}
@@ -277,7 +277,7 @@ export default function RequirementsPage() {
             <div>
               <h4 className="font-bold text-sm mb-4 text-gray-300 uppercase tracking-wider">Quick Links</h4>
               <ul className="space-y-2.5">
-                {["Apply for Visa|/register", "Check Requirements|/requirements", "Track Application|/track", "Sign In|/login"].map((item, index) => {
+                {["Apply for Visa|/register", "Visa Requirements|/visa-requirements", "Track Application|/track", "Help|/help"].map((item, index) => {
                   const [label, href] = item.split("|");
                   return (
                     <li key={`quick-${index}`}>

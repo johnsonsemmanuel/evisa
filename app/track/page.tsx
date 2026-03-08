@@ -77,10 +77,11 @@ export default function TrackPage() {
             </Link>
             <div className="hidden md:flex items-center gap-1">
               {[
+                { label: "Home", href: "/" },
                 { label: "Visa Types", href: "/#visa-types" },
-                { label: "How It Works", href: "/#how-it-works" },
-                { label: "Requirements", href: "/requirements" },
-                { label: "Track Status", href: "/track", active: true },
+                { label: "Visa Requirements", href: "/visa-requirements" },
+                { label: "Track Application", href: "/track", active: true },
+                { label: "Help", href: "/help" },
               ].map((item) => (
                 <Link
                   key={item.href}
@@ -93,7 +94,6 @@ export default function TrackPage() {
                 </Link>
               ))}
               <div className="w-px h-6 bg-gray-200 mx-2" />
-              <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3.5 py-2 rounded-lg hover:bg-gray-50 transition-colors">Sign In</Link>
               <Link href="/register" className="inline-flex items-center gap-2 bg-[#006B3F] hover:bg-[#005A34] text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-[#006B3F]/20 ml-1">
                 Apply Now <ArrowRight size={14} />
               </Link>
@@ -106,7 +106,7 @@ export default function TrackPage() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 shadow-xl animate-slide-down">
             <div className="px-5 py-4 space-y-1">
-              {["Visa Types|/#visa-types", "How It Works|/#how-it-works", "Requirements|/requirements", "Track Status|/track", "Sign In|/login"].map((item) => {
+              {["Home|/", "Visa Types|/#visa-types", "Visa Requirements|/visa-requirements", "Track Application|/track", "Help|/help"].map((item) => {
                 const [label, href] = item.split("|");
                 return <Link key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">{label}</Link>;
               })}
@@ -123,9 +123,9 @@ export default function TrackPage() {
             <Search size={14} className="text-[#006B3F]" />
             <span className="text-[#006B3F] text-xs font-semibold uppercase tracking-wider">Application Tracking</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">Track Your Application</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">Track Application</h1>
           <p className="text-gray-500 leading-relaxed">
-            Enter your reference number and passport number to check the status of your Ghana e-Visa application.
+            Enter the application reference number and passport number to check the status of a Ghana e-Visa application.
           </p>
         </div>
       </section>
@@ -135,7 +135,7 @@ export default function TrackPage() {
         <div className="max-w-xl mx-auto px-5">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-xl p-6 sm:p-8">
             <div className="mb-5">
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Reference Number</label>
+              <label className="block text-gray-700 text-sm font-semibold mb-2">Application Reference Number</label>
               <input
                 type="text"
                 value={referenceNumber}
@@ -158,7 +158,7 @@ export default function TrackPage() {
                 onChange={(e) => { setPassportNumber(e.target.value.toUpperCase()); if (touched.passport) setErrors(prev => ({ ...prev, passport: validateField("passport", e.target.value) })); }}
                 onBlur={() => handleBlur("passport")}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Enter your passport number"
+                placeholder="Enter passport number"
                 className={`w-full px-4 py-3.5 bg-gray-50 rounded-xl text-gray-900 placeholder:text-gray-400 border focus:outline-none focus:ring-2 transition-all text-sm ${
                   touched.passport && errors.passport ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-[#006B3F]/20 focus:border-[#006B3F]"
                 }`}
@@ -174,7 +174,7 @@ export default function TrackPage() {
               {isSearching ? (
                 <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Searching&hellip;</>
               ) : (
-                <><Search size={18} /> Check Status</>
+                <><Search size={18} /> Track Application</>
               )}
             </button>
 
@@ -186,7 +186,7 @@ export default function TrackPage() {
 
             <div className="flex items-center justify-center gap-2 mt-5 text-gray-400 text-xs">
               <HelpCircle size={13} />
-              <span>Your reference number was emailed after submission.</span>
+              <span>The reference number was emailed after submission.</span>
             </div>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function TrackPage() {
                         {searchResult.status?.replace(/_/g, " ")}
                       </span>
                     </div>
-                    {searchResult.status === "approved" && <p className="text-xs text-green-600/80">Your eVisa is ready for download.</p>}
+                    {searchResult.status === "approved" && <p className="text-xs text-green-600/80">The eVisa is ready for download.</p>}
                     {searchResult.status === "under_review" && <p className="text-xs text-amber-600/80">Being reviewed by an officer.</p>}
                   </div>
 
@@ -293,7 +293,7 @@ export default function TrackPage() {
             <div>
               <h4 className="font-bold text-sm mb-4 text-gray-300 uppercase tracking-wider">Quick Links</h4>
               <ul className="space-y-2.5">
-                {["Apply for Visa|/register", "Check Requirements|/requirements", "Track Application|/track", "Sign In|/login"].map((item, index) => {
+                {["Apply for Visa|/register", "Visa Requirements|/visa-requirements", "Track Application|/track", "Help|/help"].map((item, index) => {
                   const [label, href] = item.split("|");
                   return (
                     <li key={`quick-${index}`}>
