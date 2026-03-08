@@ -109,7 +109,7 @@ export default function RequirementsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <div className="flex items-center gap-2">
                 <img src="/gis-logo-cxytxk.png" alt="Ministry of Foreign Affairs" width={40} height={40} className="drop-shadow-md" />
-                <img src="/gis-logo-new.png" alt="Ghana Immigration Service" width={40} height={40} className="drop-shadow-md" />
+                <img src="/gis-logo-new.png" alt="Ghana Immigration Service" width={56} height={56} className="drop-shadow-md" />
               </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 tracking-wide leading-tight">Republic of Ghana</p>
@@ -127,9 +127,8 @@ export default function RequirementsPage() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-sm font-medium px-3.5 py-2 rounded-lg transition-colors ${
-                    item.active ? "text-[#006B3F] bg-[#006B3F]/5" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
+                  className={`text-sm font-medium px-3.5 py-2 rounded-lg transition-colors ${item.active ? "text-[#006B3F] bg-[#006B3F]/5" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
                 >
                   {item.label}
                 </Link>
@@ -181,11 +180,10 @@ export default function RequirementsPage() {
               <button
                 key={key}
                 onClick={() => setOpenSection(key)}
-                className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${
-                  openSection === key
+                className={`rounded-xl p-4 text-left transition-all cursor-pointer border ${openSection === key
                     ? "bg-white shadow-lg outline outline-2"
                     : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-md"
-                }`}
+                  }`}
                 style={openSection === key ? { outlineColor: sec.color, borderColor: sec.color + "40" } : {}}
               >
                 <div className="flex items-center gap-2.5 mb-2">

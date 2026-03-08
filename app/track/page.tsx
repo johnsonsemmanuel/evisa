@@ -71,7 +71,7 @@ export default function TrackPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <div className="flex items-center gap-2">
                 <img src="/gis-logo-cxytxk.png" alt="Ministry of Foreign Affairs" width={40} height={40} className="drop-shadow-md" />
-                <img src="/gis-logo-new.png" alt="Ghana Immigration Service" width={40} height={40} className="drop-shadow-md" />
+                <img src="/gis-logo-new.png" alt="Ghana Immigration Service" width={56} height={56} className="drop-shadow-md" />
               </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 tracking-wide leading-tight">Republic of Ghana</p>
@@ -89,9 +89,8 @@ export default function TrackPage() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-sm font-medium px-3.5 py-2 rounded-lg transition-colors ${
-                    item.active ? "text-[#006B3F] bg-[#006B3F]/5" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
+                  className={`text-sm font-medium px-3.5 py-2 rounded-lg transition-colors ${item.active ? "text-[#006B3F] bg-[#006B3F]/5" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
                 >
                   {item.label}
                 </Link>
@@ -146,9 +145,8 @@ export default function TrackPage() {
                 onBlur={() => handleBlur("reference")}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="e.g. GH-2026-00123"
-                className={`w-full px-4 py-3.5 bg-gray-50 rounded-xl text-gray-900 placeholder:text-gray-400 border focus:outline-none focus:ring-2 transition-all text-sm ${
-                  touched.reference && errors.reference ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-[#006B3F]/20 focus:border-[#006B3F]"
-                }`}
+                className={`w-full px-4 py-3.5 bg-gray-50 rounded-xl text-gray-900 placeholder:text-gray-400 border focus:outline-none focus:ring-2 transition-all text-sm ${touched.reference && errors.reference ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-[#006B3F]/20 focus:border-[#006B3F]"
+                  }`}
               />
               {touched.reference && errors.reference && <p className="text-red-500 text-xs mt-1.5">{errors.reference}</p>}
             </div>
@@ -162,9 +160,8 @@ export default function TrackPage() {
                 onBlur={() => handleBlur("passport")}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="Enter passport number"
-                className={`w-full px-4 py-3.5 bg-gray-50 rounded-xl text-gray-900 placeholder:text-gray-400 border focus:outline-none focus:ring-2 transition-all text-sm ${
-                  touched.passport && errors.passport ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-[#006B3F]/20 focus:border-[#006B3F]"
-                }`}
+                className={`w-full px-4 py-3.5 bg-gray-50 rounded-xl text-gray-900 placeholder:text-gray-400 border focus:outline-none focus:ring-2 transition-all text-sm ${touched.passport && errors.passport ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-[#006B3F]/20 focus:border-[#006B3F]"
+                  }`}
               />
               {touched.passport && errors.passport && <p className="text-red-500 text-xs mt-1.5">{errors.passport}</p>}
             </div>
@@ -224,9 +221,8 @@ export default function TrackPage() {
                       <div className="space-y-3">
                         {searchResult.timeline.map((item: any, index: number) => (
                           <div key={index} className="flex gap-3 items-center">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                              item.status === "approved" ? "bg-green-50" : item.status === "denied" ? "bg-red-50" : "bg-amber-50"
-                            }`}>
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${item.status === "approved" ? "bg-green-50" : item.status === "denied" ? "bg-red-50" : "bg-amber-50"
+                              }`}>
                               {item.status === "approved" ? <CheckCircle size={16} className="text-green-600" /> : item.status === "denied" ? <FileText size={16} className="text-red-600" /> : <Clock size={16} className="text-amber-600" />}
                             </div>
                             <div className="flex-1">
@@ -241,9 +237,8 @@ export default function TrackPage() {
                 </div>
 
                 <div className="bg-gray-50 p-6 sm:p-8 border-l border-gray-100">
-                  <div className={`rounded-xl p-5 mb-4 ${
-                    searchResult.status === "approved" ? "bg-green-50 border border-green-100" : searchResult.status === "denied" ? "bg-red-50 border border-red-100" : "bg-amber-50 border border-amber-100"
-                  }`}>
+                  <div className={`rounded-xl p-5 mb-4 ${searchResult.status === "approved" ? "bg-green-50 border border-green-100" : searchResult.status === "denied" ? "bg-red-50 border border-red-100" : "bg-amber-50 border border-amber-100"
+                    }`}>
                     <div className="flex items-center gap-2 mb-1">
                       {searchResult.status === "approved" ? <CheckCircle size={16} className="text-green-600" /> : searchResult.status === "denied" ? <FileText size={16} className="text-red-600" /> : <Clock size={16} className="text-amber-600" />}
                       <span className={`text-sm font-bold capitalize ${searchResult.status === "approved" ? "text-green-700" : searchResult.status === "denied" ? "text-red-700" : "text-amber-700"}`}>
