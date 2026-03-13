@@ -47,3 +47,6 @@ export function SlaIndicator({ hoursLeft, isWithinSla }: { hoursLeft: number | n
   }
   return <Badge variant="success">{hours}h left</Badge>;
 }
+
+// Re-export risk badge components
+export { RiskBadge, RiskScoreIndicator } from "./risk-badge";

@@ -17,28 +17,26 @@ interface ProcessingSpeedModalProps {
 
 const tierIcons: Record<string, React.ReactNode> = {
   standard: <Clock size={20} className="text-text-muted" />,
-  fast_track: <TrendingUp size={20} className="text-warning" />,
-  express: <Crown size={20} className="text-accent" />,
+  express: <TrendingUp size={20} className="text-warning" />,
+  premium: <Crown size={20} className="text-accent" />,
 };
 
 const tierIconBg: Record<string, string> = {
   standard: "bg-surface",
-  fast_track: "bg-warning/8",
-  express: "bg-accent/8",
-  ultra_express: "bg-danger/8",
+  express: "bg-warning/8",
+  premium: "bg-accent/8",
 };
 
 const tierRing: Record<string, string> = {
   standard: "ring-text-muted/20",
-  fast_track: "ring-warning/20",
-  express: "ring-accent/20",
-  ultra_express: "ring-danger/20",
+  express: "ring-warning/20",
+  premium: "ring-accent/20",
 };
 
 const tierFeatures: Record<string, string[]> = {
   standard: ["Email notifications", "3-5 business days"],
-  fast_track: ["Priority queue", "24-48 hours"],
-  express: ["Dedicated officer", "Same day"],
+  express: ["Priority queue", "2-3 business days"],
+  premium: ["Dedicated officer", "24-48 hours"],
 };
 
 export function ProcessingSpeedModal({
@@ -90,71 +88,10 @@ export function ProcessingSpeedModal({
           </div>
         </div>
 
-        {/* Speed Cards Grid - Landscape Layout: 3 on top, 2 below */}
+        {/* Speed Cards Grid - Single Row for 3 tiers */}
         <div className="px-6 pb-6">
           <div className="grid grid-cols-3 gap-4">
-            {serviceTiers.filter(tier => tier.is_active).slice(0, 3).map((tier) => {
-              const multiplier = parseFloat(tier.fee_multiplier);
-              const additional = parseFloat(tier.additional_fee);
-              const totalFee = (baseFee * multiplier) + additional;
-              const isSelected = selectedTierId === tier.id.toString();
-              const features = tierFeatures[tier.code] || [];
-
-              return (
-                <button
-                  key={tier.id}
-                  type="button"
-                  onClick={() => onSelect(tier.id.toString())}
-                  className={`relative text-left p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${isSelected
-                    ? `border-accent bg-accent/5 ring-4 ${tierRing[tier.code] || "ring-accent/10"}`
-                    : "border-border hover:border-accent/30 hover:bg-surface/50"
-                    }`}
-                >
-                  {isSelected && (
-                    <div className="absolute top-3 right-3">
-                      <CheckCircle2 size={20} className="text-accent" />
-                    </div>
-                  )}
-                  <div className={`w-11 h-11 rounded-xl ${tierIconBg[tier.code] || "bg-surface"} flex items-center justify-center mb-4`}>
-                    {tierIcons[tier.code] || <Clock size={20} />}
-                  </div>
-                  <h3 className="font-bold text-text-primary mb-1">{tier.name}</h3>
-                  <p className="text-xs text-text-muted leading-relaxed mb-3">
-                    {tier.processing_time_display}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {features.map((f, i) => (
-                      <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-surface text-text-secondary">
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="pt-3 border-t border-border-light">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] text-text-muted uppercase tracking-wider font-medium">Base Fee</p>
-                        <p className="text-sm font-medium text-text-primary">${baseFee.toFixed(2)}</p>
-                      </div>
-                      {tier.code !== "standard" && (
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] text-text-muted uppercase tracking-wider font-medium">Processing Fee</p>
-                          <p className="text-sm font-medium text-accent">+${(totalFee - baseFee).toFixed(2)}</p>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between pt-2 border-t border-border-light">
-                        <p className="text-[11px] text-text-muted uppercase tracking-wider font-medium">Total Amount</p>
-                        <p className="text-xl font-bold text-accent">${totalFee.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Second row for remaining items */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            {serviceTiers.filter(tier => tier.is_active).slice(3).map((tier) => {
+            {serviceTiers.filter(tier => tier.is_active).map((tier) => {
               const multiplier = parseFloat(tier.fee_multiplier);
               const additional = parseFloat(tier.additional_fee);
               const totalFee = (baseFee * multiplier) + additional;

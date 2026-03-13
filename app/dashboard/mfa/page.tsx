@@ -1,12 +1,14 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useRealTimeDashboard } from "@/hooks/useRealTimeDashboard";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button } from "@/components/ui/button";
-import { StatusBadge, SlaIndicator } from "@/components/ui/badge";
+import { StatusBadge, SlaIndicator, RiskBadge } from "@/components/ui/badge";
 import { MetricsSkeleton } from "@/components/ui/skeleton";
 import {
   AlertTriangle,
@@ -19,23 +21,41 @@ import {
   FileCheck,
   BadgeCheck,
   Inbox,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import type { MfaMetrics, Application, PaginatedResponse } from "@/lib/types";
 
 export default function MfaDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const [realtimeMetrics, setRealtimeMetrics] = useState<MfaMetrics | null>(null);
+
+  // Real-time dashboard hook
+  const { isConnected } = useRealTimeDashboard({
+    agency: 'mfa',
+    missionId: user?.mfa_mission_id,
+    onMetricsUpdate: useCallback((newMetrics: any) => {
+      setRealtimeMetrics(newMetrics);
+    }, []),
+    onApplicationStatusChange: useCallback((update: any) => {
+      console.log('MFA Application status changed:', update);
+    }, []),
+  });
 
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["mfa-metrics"],
     queryFn: () => api.get<MfaMetrics>("/mfa/metrics").then((r) => r.data),
-    refetchInterval: 30000,
+    refetchInterval: isConnected ? 300000 : 30000, // Reduce polling when connected to WebSocket
   });
+
+  // Use real-time metrics if available, otherwise fall back to polled data
+  const currentMetrics = realtimeMetrics || metrics;
 
   const { data: recentEscalations } = useQuery({
     queryKey: ["mfa-recent-escalations"],
     queryFn: () =>
-      api.get<PaginatedResponse<Application>>("/mfa/escalations", { params: { page: 1 } }).then((r) => r.data),
+      api.get<PaginatedResponse<Application>>("/mfa/escalations", { params: { page: 1, status: "approved" } }).then((r) => r.data),
   });
 
   const greeting = () => {
@@ -50,12 +70,32 @@ export default function MfaDashboard() {
       title="MFA Dashboard"
       description="Ministry of Foreign Affairs — Escalation overview"
       actions={
-        <Button
-          leftIcon={<AlertTriangle size={16} />}
-          onClick={() => router.push("/dashboard/mfa/escalations")}
-        >
-          Escalation Inbox
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Real-time connection indicator */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+            isConnected 
+              ? 'bg-green-100 text-green-700 border border-green-200' 
+              : 'bg-gray-100 text-gray-600 border border-gray-200'
+          }`}>
+            {isConnected ? (
+              <>
+                <Wifi size={12} />
+                Live
+              </>
+            ) : (
+              <>
+                <WifiOff size={12} />
+                Polling
+              </>
+            )}
+          </div>
+          <Button
+            leftIcon={<AlertTriangle size={16} />}
+            onClick={() => router.push("/dashboard/mfa/escalations")}
+          >
+            Escalation Inbox
+          </Button>
+        </div>
       }
     >
       {/* ── Welcome Banner ── */}
@@ -93,7 +133,7 @@ export default function MfaDashboard() {
       {isLoading ? (
         <MetricsSkeleton />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="card-interactive group" onClick={() => router.push("/dashboard/mfa/escalations?queue=review_queue")}>
             <div className="flex items-center justify-between mb-4">
               <div className="w-11 h-11 rounded-xl bg-warning/8 flex items-center justify-center group-hover:bg-warning/12 transition-colors">
@@ -101,7 +141,7 @@ export default function MfaDashboard() {
               </div>
               <ChevronRight size={16} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <p className="text-3xl font-bold text-text-primary tracking-tight">{metrics?.pending_decision ?? 0}</p>
+            <p className="text-3xl font-bold text-text-primary tracking-tight">{currentMetrics?.pending_decision ?? 0}</p>
             <p className="text-xs text-text-muted font-medium mt-1">Pending Review</p>
           </div>
 
@@ -112,7 +152,7 @@ export default function MfaDashboard() {
               </div>
               <ChevronRight size={16} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <p className="text-3xl font-bold text-text-primary tracking-tight">{metrics?.pending_approval ?? 0}</p>
+            <p className="text-3xl font-bold text-text-primary tracking-tight">{currentMetrics?.pending_approval ?? 0}</p>
             <p className="text-xs text-text-muted font-medium mt-1">Pending Approval</p>
           </div>
 
@@ -123,10 +163,10 @@ export default function MfaDashboard() {
               </div>
               <ChevronRight size={16} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <p className="text-3xl font-bold text-text-primary tracking-tight">{metrics?.total_approved ?? 0}</p>
+            <p className="text-3xl font-bold text-text-primary tracking-tight">{currentMetrics?.total_approved ?? 0}</p>
             <p className="text-xs text-text-muted font-medium mt-1">Approved / Issued</p>
-            {(metrics?.approved_today ?? 0) > 0 && (
-              <p className="text-xs text-success font-medium mt-0.5">+{metrics?.approved_today} today</p>
+            {(currentMetrics?.approved_today ?? 0) > 0 && (
+              <p className="text-xs text-success font-medium mt-0.5">+{currentMetrics?.approved_today} today</p>
             )}
           </div>
 
@@ -137,14 +177,25 @@ export default function MfaDashboard() {
               </div>
               <ChevronRight size={16} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <p className="text-3xl font-bold text-text-primary tracking-tight">{metrics?.denied_today ?? 0}</p>
+            <p className="text-3xl font-bold text-text-primary tracking-tight">{currentMetrics?.denied_today ?? 0}</p>
             <p className="text-xs text-text-muted font-medium mt-1">Denied Today</p>
+          </div>
+
+          <div className="card-interactive group" onClick={() => router.push("/dashboard/mfa/escalations?type=eta&status=flagged")}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-11 h-11 rounded-xl bg-warning/8 flex items-center justify-center group-hover:bg-warning/12 transition-colors">
+                <Shield size={20} className="text-warning" />
+              </div>
+              <ChevronRight size={16} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className="text-3xl font-bold text-text-primary tracking-tight">{currentMetrics?.flagged_etas ?? 0}</p>
+            <p className="text-xs text-text-muted font-medium mt-1">Flagged ETAs</p>
           </div>
         </div>
       )}
 
       {/* ── SLA Warning ── */}
-      {metrics?.sla_breaches ? (
+      {currentMetrics?.sla_breaches ? (
         <div className="card border-2 border-danger/20 bg-danger/5 mb-8">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-danger/10 rounded-xl flex items-center justify-center shrink-0">
@@ -152,7 +203,7 @@ export default function MfaDashboard() {
             </div>
             <div className="flex-1">
               <p className="font-bold text-danger">
-                {metrics.sla_breaches} SLA Breach{metrics.sla_breaches > 1 ? "es" : ""} Detected
+                {currentMetrics.sla_breaches} SLA Breach{currentMetrics.sla_breaches > 1 ? "es" : ""} Detected
               </p>
               <p className="text-sm text-text-muted">
                 Some escalated cases have exceeded their SLA deadline. Immediate action required.
@@ -169,8 +220,8 @@ export default function MfaDashboard() {
       <div className="bg-white rounded-2xl border border-border shadow-sm mb-8">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
-            <h2 className="text-base font-bold text-text-primary">Recent Escalations</h2>
-            <p className="text-xs text-text-muted mt-0.5">Latest cases requiring MFA review</p>
+            <h2 className="text-base font-bold text-text-primary">Approved Applications</h2>
+            <p className="text-xs text-text-muted mt-0.5">Applications approved or issued via MFA</p>
           </div>
           <Button
             variant="secondary"
@@ -186,9 +237,9 @@ export default function MfaDashboard() {
             <div className="w-14 h-14 bg-surface rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Inbox size={24} className="text-text-muted" />
             </div>
-            <p className="text-text-primary font-semibold mb-1">No escalations yet</p>
+            <p className="text-text-primary font-semibold mb-1">No approved applications yet</p>
             <p className="text-sm text-text-muted mb-6 max-w-xs mx-auto">
-              Escalated cases from GIS will appear here.
+              Approved applications will appear here.
             </p>
           </div>
         ) : (
@@ -216,6 +267,11 @@ export default function MfaDashboard() {
                     <p className="text-sm font-semibold text-text-primary truncate">{app.reference_number}</p>
                     <p className="text-xs text-text-muted truncate">
                       {app.visa_type?.name || "Visa Application"} {app.nationality ? `\u2022 ${app.nationality}` : ""}
+                      {app.risk_level && (
+                        <span className="ml-2">
+                          <RiskBadge level={app.risk_level} score={app.risk_score} />
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="hidden sm:flex items-center gap-2 shrink-0">
@@ -247,7 +303,7 @@ export default function MfaDashboard() {
             </div>
             <div>
               <p className="font-semibold text-text-primary text-sm">Review Queue</p>
-              <p className="text-xs text-text-muted">{metrics?.review_queue ?? 0} cases to review</p>
+              <p className="text-xs text-text-muted">{currentMetrics?.review_queue ?? 0} cases to review</p>
             </div>
           </div>
         </button>
@@ -261,21 +317,21 @@ export default function MfaDashboard() {
             </div>
             <div>
               <p className="font-semibold text-text-primary text-sm">Approval Queue</p>
-              <p className="text-xs text-text-muted">{metrics?.approval_queue ?? 0} pending approval</p>
+              <p className="text-xs text-text-muted">{currentMetrics?.approval_queue ?? 0} pending approval</p>
             </div>
           </div>
         </button>
         <button
-          onClick={() => router.push("/dashboard/mfa/escalations")}
+          onClick={() => router.push("/dashboard/mfa/escalations?status=approved")}
           className="card hover:border-accent/30 transition-colors text-left cursor-pointer"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Shield size={20} className="text-primary" />
+            <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+              <CheckCircle2 size={20} className="text-success" />
             </div>
             <div>
-              <p className="font-semibold text-text-primary text-sm">All Escalations</p>
-              <p className="text-xs text-text-muted">{metrics?.total_escalated ?? 0} total cases</p>
+              <p className="font-semibold text-text-primary text-sm">Approved Applications</p>
+              <p className="text-xs text-text-muted">{currentMetrics?.total_approved ?? 0} approved</p>
             </div>
           </div>
         </button>

@@ -42,6 +42,7 @@ export default function BorderPortalPage() {
   const [searchType, setSearchType] = useState<"qr" | "manual">("qr");
   const [qrData, setQrData] = useState("");
   const [passportNumber, setPassportNumber] = useState("");
+  const [nationality, setNationality] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [documentType, setDocumentType] = useState<"evisa" | "eta">("evisa");
   const [selectedPort, setSelectedPort] = useState("KIA");
@@ -49,6 +50,8 @@ export default function BorderPortalPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [decisionModal, setDecisionModal] = useState<{ open: boolean; type: "admit" | "secondary" | "deny" }>({ open: false, type: "admit" });
+  const [bacCode, setBacCode] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("immigration_officer"); // Default role
   const queryClient = useQueryClient();
 
   const { data: stats } = useQuery({
@@ -57,17 +60,59 @@ export default function BorderPortalPage() {
     refetchInterval: 30000,
   });
 
+  // Get user role from authentication context or API
+  const { data: userProfile } = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => api.get("/user/profile").then((r) => r.data),
+    onSuccess: (data) => {
+      if (data?.role) {
+        setUserRole(data.role);
+      }
+    },
+  });
+
   const handleVerify = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = searchType === "qr"
-        ? await api.post("/border/verify-qr", { qr_data: qrData, port_of_entry: selectedPort, passport_number: passportNumber })
-        : await api.post("/border/verify", { document_type: documentType, reference_number: referenceNumber, passport_number: passportNumber });
-      setVerificationResult(response.data);
+      // Updated to use new Week 2 Border Verification API
+      const response = await api.post("/api/border/verify-travel", {
+        passport_number: passportNumber,
+        nationality: nationality,
+        eta_number: searchType === "qr" ? null : (documentType === "eta" ? referenceNumber : null),
+        visa_id: searchType === "qr" ? null : (documentType === "evisa" ? referenceNumber : null),
+      });
+      
+      // Transform response to match existing UI expectations
+      const transformedResult = {
+        valid: response.data.status === "AUTHORIZED",
+        status: response.data.status,
+        message: response.data.status === "AUTHORIZED" ? "Authorized for entry" : response.data.message,
+        document: response.data.status === "AUTHORIZED" ? {
+          type: response.data.authorization_type.toLowerCase(),
+          reference_number: response.data.visa_id || response.data.eta_number,
+          eta_number: response.data.eta_number,
+          holder_name: response.data.holder_name,
+          nationality: response.data.nationality,
+          passport_number_masked: response.data.passport_number,
+          visa_type: response.data.visa_type,
+          entry_type: "single", // Default
+          valid_until: response.data.valid_until,
+          approved_on: new Date().toISOString().split('T')[0],
+        } : null,
+        alerts: response.data.status !== "AUTHORIZED" ? [{ type: "warning", message: response.data.message }] : [],
+      };
+      
+      setVerificationResult(transformedResult);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: VerificationResult } };
-      setVerificationResult(e.response?.data || null);
+      const e = err as { response?: { data?: any } };
+      const errorResult = {
+        valid: false,
+        status: "DENIED",
+        message: e.response?.data?.error?.message || "Verification failed",
+        alerts: [{ type: "error", message: e.response?.data?.error?.message || "Verification failed" }],
+      };
+      setVerificationResult(errorResult);
       if (!e.response?.data) setError("Verification failed");
     } finally {
       setLoading(false);
@@ -76,20 +121,52 @@ export default function BorderPortalPage() {
 
   const getColor = (r: VerificationResult) => !r.valid ? "red" : (r.alerts?.length || r.risk_warnings?.length) ? "amber" : "green";
 
+  const handleGenerateBac = async () => {
+    if (!verificationResult?.document) return;
+    setLoading(true);
+    try {
+      const response = await api.post("/api/border/generate-bac", {
+        passport_number: passportNumber,
+        nationality: verificationResult.document.nationality,
+        eta_number: verificationResult.document.eta_number,
+        visa_id: verificationResult.document.reference_number,
+      });
+      setBacCode(response.data.authorization_code);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: any } };
+      setError(e.response?.data?.error?.message || "Failed to generate BAC");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDecision = async (decision: string, reasonCode: string, notes: string) => {
     if (!verificationResult?.document) return;
     setLoading(true);
     try {
-      await api.post("/border/record", {
-        crossing_type: "entry",
-        port_of_entry: selectedPort,
-        document_type: verificationResult.document.type,
-        passport_number: passportNumber,
-        traveler_name: verificationResult.document.holder_name,
-        nationality: verificationResult.document.nationality,
-        verification_status: decision === "admit" ? "valid" : decision === "secondary" ? "secondary_inspection" : "invalid",
-        verification_notes: `[${reasonCode}] ${notes}`.trim(),
-      });
+      // Use new Week 2 API for entry confirmation if admitting
+      if (decision === "admit") {
+        await api.post("/api/border/confirm-entry", {
+          passport_number: passportNumber,
+          nationality: verificationResult.document.nationality,
+          eta_number: verificationResult.document.eta_number,
+          visa_id: verificationResult.document.reference_number,
+          port_of_entry: selectedPort,
+          notes: `[${reasonCode}] ${notes}`.trim(),
+        });
+      } else {
+        // Use legacy API for secondary/deny decisions
+        await api.post("/border/record", {
+          crossing_type: "entry",
+          port_of_entry: selectedPort,
+          document_type: verificationResult.document.type,
+          passport_number: passportNumber,
+          traveler_name: verificationResult.document.holder_name,
+          nationality: verificationResult.document.nationality,
+          verification_status: decision === "secondary" ? "secondary_inspection" : "invalid",
+          verification_notes: `[${reasonCode}] ${notes}`.trim(),
+        });
+      }
       setDecisionModal({ open: false, type: "admit" });
       setVerificationResult(null);
       setQrData("");
@@ -140,16 +217,25 @@ export default function BorderPortalPage() {
 
   return (
     <DashboardShell
-      title="Border Verification Portal"
+      title={`Border Verification Portal ${userRole === 'airline_staff' ? '- Airline Staff' : userRole === 'immigration_officer' ? '- Immigration Officer' : ''}`}
       description="Ghana Immigration Service — Entry Point Verification"
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => router.push("/dashboard/border/reports")}>
-            <FileText size={14} className="mr-1" /> Reports
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => router.push("/dashboard/border/operations")}>
-            <Settings size={14} className="mr-1" /> Operations
-          </Button>
+          {userRole === 'immigration_officer' && (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => router.push("/dashboard/border/reports")}>
+                <FileText size={14} className="mr-1" /> Reports
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => router.push("/dashboard/border/operations")}>
+                <Settings size={14} className="mr-1" /> Operations
+              </Button>
+            </>
+          )}
+          {userRole === 'airline_staff' && (
+            <div className="text-sm text-blue-600 font-medium">
+              Boarding Authorization System
+            </div>
+          )}
         </div>
       }
     >
@@ -193,6 +279,7 @@ export default function BorderPortalPage() {
               <div className="space-y-4">
                 <Input placeholder="Scan QR code..." value={qrData} onChange={(e) => setQrData(e.target.value)} />
                 <Input placeholder="Passport number..." value={passportNumber} onChange={(e) => setPassportNumber(e.target.value)} />
+                <Input placeholder="Nationality (e.g., US, UK, NG)..." value={nationality} onChange={(e) => setNationality(e.target.value.toUpperCase())} />
               </div>
             ) : (
               <div className="space-y-4">
@@ -202,6 +289,7 @@ export default function BorderPortalPage() {
                 </select>
                 <Input placeholder="Reference number..." value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} />
                 <Input placeholder="Passport number..." value={passportNumber} onChange={(e) => setPassportNumber(e.target.value)} />
+                <Input placeholder="Nationality (e.g., US, UK, NG)..." value={nationality} onChange={(e) => setNationality(e.target.value.toUpperCase())} />
               </div>
             )}
 
@@ -284,15 +372,49 @@ export default function BorderPortalPage() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-4 pt-4 border-t border-slate-200">
-                    <Button className="flex-1 !bg-emerald-600 hover:!bg-emerald-700" size="lg" onClick={() => setDecisionModal({ open: true, type: "admit" })}>
-                      <CheckCircle2 size={18} className="mr-2" />Admit Entry
-                    </Button>
-                    <Button className="flex-1 !bg-amber-600 hover:!bg-amber-700" size="lg" onClick={() => setDecisionModal({ open: true, type: "secondary" })}>
-                      <AlertTriangle size={18} className="mr-2" />Secondary
-                    </Button>
-                    <Button variant="danger" className="flex-1" size="lg" onClick={() => setDecisionModal({ open: true, type: "deny" })}>
-                      <XCircle size={18} className="mr-2" />Deny Entry
-                    </Button>
+                    {userRole === 'immigration_officer' ? (
+                      <>
+                        <Button className="flex-1 !bg-emerald-600 hover:!bg-emerald-700" size="lg" onClick={() => setDecisionModal({ open: true, type: "admit" })}>
+                          <CheckCircle2 size={18} className="mr-2" />Admit Entry
+                        </Button>
+                        <Button className="flex-1 !bg-amber-600 hover:!bg-amber-700" size="lg" onClick={() => setDecisionModal({ open: true, type: "secondary" })}>
+                          <AlertTriangle size={18} className="mr-2" />Secondary
+                        </Button>
+                        <Button variant="danger" className="flex-1" size="lg" onClick={() => setDecisionModal({ open: true, type: "deny" })}>
+                          <XCircle size={18} className="mr-2" />Deny Entry
+                        </Button>
+                      </>
+                    ) : userRole === 'airline_staff' ? (
+                      <div className="w-full">
+                        <Button 
+                          className="w-full !bg-blue-600 hover:!bg-blue-700" 
+                          size="lg" 
+                          onClick={handleGenerateBac}
+                          loading={loading}
+                        >
+                          <Plane size={18} className="mr-2" />Generate Boarding Authorization
+                        </Button>
+                        {bacCode && (
+                          <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                            <div className="text-center">
+                              <div className="bg-white p-4 rounded-lg inline-block mb-3">
+                                {/* QR Code would go here - placeholder for now */}
+                                <div className="w-32 h-32 bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                  QR Code
+                                </div>
+                              </div>
+                              <p className="font-mono text-sm font-bold text-blue-800">{bacCode}</p>
+                              <p className="text-xs text-blue-600 mt-1">Valid for 24 hours</p>
+                              <p className="text-xs text-gray-500 mt-2">Show this code to immigration officer</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-full text-center py-4 text-gray-500">
+                        <p>Contact system administrator for role assignment</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

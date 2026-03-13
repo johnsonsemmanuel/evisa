@@ -1,8 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, CreditCard, Smartphone, Shield, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, CreditCard, Smartphone, Shield, AlertCircle, CheckCircle, Loader2, Globe, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import api from "@/lib/api";
+
+interface PaymentMethod {
+  id: string;
+  provider: string;
+  name: string;
+  description: string;
+  icon: string;
+  currencies: string[];
+  countries: string[];
+}
 
 interface PaymentModalProps {
   open: boolean;
@@ -16,22 +27,20 @@ interface PaymentModalProps {
   referenceNumber?: string;
 }
 
-const PAYMENT_METHODS = [
-  {
-    id: "card",
-    label: "Credit / Debit Card",
-    description: "Visa, Mastercard, or Verve",
-    icon: <CreditCard size={22} className="text-info" />,
-    badge: "Instant",
-  },
-  {
-    id: "momo",
-    label: "Mobile Money",
-    description: "MTN MoMo, Vodafone Cash, AirtelTigo Money",
-    icon: <Smartphone size={22} className="text-accent" />,
-    badge: "Popular",
-  },
-];
+const getIconComponent = (iconName: string) => {
+  switch (iconName) {
+    case 'credit-card':
+      return <CreditCard size={22} className="text-info" />;
+    case 'smartphone':
+      return <Smartphone size={22} className="text-accent" />;
+    case 'globe':
+      return <Globe size={22} className="text-success" />;
+    case 'building':
+      return <Building size={22} className="text-warning" />;
+    default:
+      return <CreditCard size={22} className="text-info" />;
+  }
+};
 
 export function PaymentModal({
   open,
@@ -44,14 +53,65 @@ export function PaymentModal({
   applicantName,
   referenceNumber,
 }: PaymentModalProps) {
-  const [selectedMethod, setSelectedMethod] = useState("card");
+  const [selectedMethod, setSelectedMethod] = useState("");
   const [processing, setProcessing] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loadingMethods, setLoadingMethods] = useState(true);
+
+  // Fetch payment methods when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchPaymentMethods();
+    }
+  }, [open]);
+
+  const fetchPaymentMethods = async () => {
+    try {
+      setLoadingMethods(true);
+      const response = await api.get('/applicant/payment-methods?country=GH');
+      const methods = response.data.methods || [];
+      setPaymentMethods(methods);
+      
+      // Auto-select first method if available
+      if (methods.length > 0 && !selectedMethod) {
+        setSelectedMethod(methods[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment methods:', error);
+      // Fallback to basic methods if API fails
+      setPaymentMethods([
+        {
+          id: 'paystack_card',
+          provider: 'paystack',
+          name: 'Card Payment',
+          description: 'Pay with Visa, Mastercard, or Verve',
+          icon: 'credit-card',
+          currencies: ['GHS', 'USD'],
+          countries: ['GH'],
+        },
+        {
+          id: 'paystack_mobile_money',
+          provider: 'paystack',
+          name: 'Mobile Money',
+          description: 'MTN MoMo, Vodafone Cash, AirtelTigo Money',
+          icon: 'smartphone',
+          currencies: ['GHS'],
+          countries: ['GH'],
+        },
+      ]);
+      if (!selectedMethod) {
+        setSelectedMethod('paystack_card');
+      }
+    } finally {
+      setLoadingMethods(false);
+    }
+  };
 
   if (!open) return null;
 
   const handlePay = async () => {
-    if (!agreed) return;
+    if (!agreed || !selectedMethod) return;
     setProcessing(true);
     try {
       await onPay(selectedMethod);
@@ -114,45 +174,58 @@ export function PaymentModal({
           {/* Payment Method Selection */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-text-primary">Payment Method</h3>
-            {PAYMENT_METHODS.map((method) => (
-              <button
-                key={method.id}
-                type="button"
-                onClick={() => setSelectedMethod(method.id)}
-                disabled={processing}
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ease-out cursor-pointer flex items-center gap-4
-                  ${selectedMethod === method.id
-                    ? "border-accent bg-accent/5"
-                    : "border-border hover:border-accent/30"
-                  } ${processing ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <div className="shrink-0">{method.icon}</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-text-primary">{method.label}</span>
-                    {method.badge && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
-                        {method.badge}
-                      </span>
-                    )}
+            
+            {loadingMethods ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 size={24} className="animate-spin text-accent" />
+                <span className="ml-2 text-text-secondary">Loading payment methods...</span>
+              </div>
+            ) : (
+              paymentMethods.map((method) => (
+                <button
+                  key={method.id}
+                  type="button"
+                  onClick={() => setSelectedMethod(method.id)}
+                  disabled={processing}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-150 ease-out cursor-pointer flex items-center gap-4
+                    ${selectedMethod === method.id
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-accent/30"
+                    } ${processing ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <div className="shrink-0">{getIconComponent(method.icon)}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-text-primary">{method.name}</span>
+                      {method.provider === 'paystack' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
+                          Popular
+                        </span>
+                      )}
+                      {method.provider === 'gcb' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-info/10 text-info font-medium">
+                          Local
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-muted mt-0.5">{method.description}</p>
                   </div>
-                  <p className="text-xs text-text-muted mt-0.5">{method.description}</p>
-                </div>
-                {selectedMethod === method.id && (
-                  <CheckCircle size={20} className="text-accent shrink-0" />
-                )}
-              </button>
-            ))}
+                  {selectedMethod === method.id && (
+                    <CheckCircle size={20} className="text-accent shrink-0" />
+                  )}
+                </button>
+              ))
+            )}
           </div>
 
-          {/* Demo Mode Notice */}
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-info/5 border border-info/20">
-            <AlertCircle size={18} className="text-info shrink-0 mt-0.5" />
+          {/* Payment Security Notice */}
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-success/5 border border-success/20">
+            <Shield size={18} className="text-success shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-text-primary">Demo Mode Active</p>
+              <p className="text-sm font-medium text-text-primary">Secure Payment</p>
               <p className="text-xs text-text-secondary mt-1">
-                This is a demonstration system. Payment will be automatically approved without actual transaction processing.
-                Your application will be immediately submitted for review.
+                Your payment is processed securely through our certified payment partners. 
+                All transactions are encrypted and PCI DSS compliant.
               </p>
             </div>
           </div>
@@ -206,7 +279,7 @@ export function PaymentModal({
           )}
           <Button
             onClick={handlePay}
-            disabled={!agreed || processing}
+            disabled={!agreed || processing || !selectedMethod || loadingMethods}
             className="!bg-accent hover:!bg-accent-dark min-w-[180px]"
           >
             {processing ? (

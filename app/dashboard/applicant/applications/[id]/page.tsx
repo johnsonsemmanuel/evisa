@@ -259,6 +259,65 @@ export default function ApplicationDetailPage() {
         </div>
       )}
 
+      {/* ── Payment Required/Failed Banner ── */}
+      {(application.status === "pending_payment" || application.status === "submitted_awaiting_payment" || 
+        (application.payment && application.payment.status === "failed")) && (
+        <div className="rounded-2xl bg-gradient-to-r from-warning/10 via-warning/5 to-danger/5 border border-warning/20 p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center shrink-0">
+              <CreditCard size={28} className="text-warning" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-text-primary mb-1">
+                {application.payment?.status === "failed" ? "Payment Failed" : "Payment Required"}
+              </h3>
+              <p className="text-sm text-text-secondary">
+                {application.payment?.status === "failed" 
+                  ? "Your payment could not be processed. Please try again with a different payment method."
+                  : "Complete your payment to submit your application for processing. Unpaid applications are cancelled after 48 hours."
+                }
+              </p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <Button 
+                size="sm" 
+                leftIcon={<CreditCard size={14} />} 
+                onClick={() => router.push(`/dashboard/applicant/applications/${id}/payment`)}
+              >
+                {application.payment?.status === "failed" ? "Retry Payment" : "Make Payment"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {application.status === "denied" && (
+        <div className="rounded-2xl bg-gradient-to-r from-danger/10 via-danger/5 to-rose-50/5 border border-danger/20 p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-danger/10 flex items-center justify-center shrink-0">
+              <AlertCircle size={28} className="text-danger" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-text-primary mb-1">
+                Application Denied
+              </h3>
+              <p className="text-sm text-text-secondary">
+                Your visa application has been denied. Please review the decision notes below for more information. If you need assistance, contact our support team.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<MessageSquare size={14} />}
+                onClick={() => router.push("/dashboard/applicant/support")}
+              >
+                Talk to Support
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6 w-full">

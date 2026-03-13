@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { countries } from "@/lib/countries";
+import axios from "axios";
 import {
   ArrowRight,
   CheckCircle2,
@@ -62,38 +63,41 @@ export default function Home() {
 
   // Eligibility checker state
   const [nationality, setNationality] = useState("");
-  const [eligibilityResult, setEligibilityResult] = useState<"visa_required" | "visa_on_arrival" | "no_visa" | null>(null);
+  const [eligibilityResult, setEligibilityResult] = useState<any>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
 
   // Track application state
   const [trackRef, setTrackRef] = useState("");
 
-  // ECOWAS countries - no visa required
-  const ecowasCountries = [
-    "BJ", "BF", "CV", "CI", "GM", "GN", "GW", "LR", "ML", "NE",
-    "NG", "SN", "SL", "TG"
-  ];
-
-  // Countries eligible for Visa on Arrival
-  const visaOnArrivalCountries = [
-    "US", "GB", "CA", "AU", "NZ", "JP", "KR", "SG", "MY", "ZA",
-    "DE", "FR", "IT", "ES", "NL", "BE", "SE", "NO", "DK", "FI",
-    "AT", "CH", "IE", "PT", "GR", "PL", "CZ", "HU", "RO", "BG"
-  ];
-
-  const checkEligibility = () => {
+  const checkEligibility = async () => {
     if (!nationality) return;
-    if (ecowasCountries.includes(nationality)) {
-      setEligibilityResult("no_visa");
-    } else if (visaOnArrivalCountries.includes(nationality)) {
-      setEligibilityResult("visa_on_arrival");
-    } else {
-      setEligibilityResult("visa_required");
+    
+    setEligibilityLoading(true);
+    try {
+      const response = await axios.post('/api/eta/check-eligibility', {
+        nationality: nationality
+      });
+      setEligibilityResult(response.data);
+    } catch (error) {
+      console.error('Eligibility check failed:', error);
+      alert('Failed to check eligibility. Please try again.');
+    } finally {
+      setEligibilityLoading(false);
     }
   };
 
   const resetEligibility = () => {
     setNationality("");
     setEligibilityResult(null);
+  };
+
+  const proceedToApplication = () => {
+    if (eligibilityResult?.authorization_required === 'eta') {
+      router.push(`/apply/eta?nationality=${nationality}`);
+    } else {
+      // Redirect to visa application
+      router.push('/login');
+    }
   };
 
   // Section refs for animations
@@ -362,49 +366,49 @@ export default function Home() {
 
                   <button
                     onClick={checkEligibility}
-                    disabled={!nationality}
+                    disabled={!nationality || eligibilityLoading}
                     className="w-full inline-flex items-center justify-center gap-2 bg-[#006B3F] hover:bg-[#005A34] text-white font-bold px-8 py-4 rounded-xl transition-colors disabled:opacity-50 cursor-pointer shadow-lg shadow-[#006B3F]/20"
                   >
                     <CheckCircle2 size={18} />
-                    Check Eligibility
+                    {eligibilityLoading ? 'Checking...' : 'Check Eligibility'}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-5">
                   {/* Result display */}
-                  {eligibilityResult === "no_visa" && (
+                  {eligibilityResult?.authorization_required === 'none' && (
                     <div className="p-5 rounded-xl bg-green-50 border-2 border-green-200">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                           <CheckCircle2 size={20} className="text-green-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-bold text-green-700 mb-1">No Visa Required</h3>
+                          <h3 className="text-lg font-bold text-green-700 mb-1">No Authorization Required</h3>
                           <p className="text-sm text-green-600/80">
-                            As an ECOWAS citizen, you can enter Ghana without a visa for up to 90 days.
+                            {eligibilityResult.details.message}
                           </p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {eligibilityResult === "visa_on_arrival" && (
+                  {eligibilityResult?.authorization_required === 'eta' && (
                     <div className="p-5 rounded-xl bg-blue-50 border-2 border-blue-200">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                           <Globe size={20} className="text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-bold text-blue-700 mb-1">Visa on Arrival Available</h3>
+                          <h3 className="text-lg font-bold text-blue-700 mb-1">ETA Required</h3>
                           <p className="text-sm text-blue-600/80">
-                            You are eligible for visa on arrival. We recommend applying for an e-Visa in advance for a smoother experience.
+                            {eligibilityResult.details.message}
                           </p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {eligibilityResult === "visa_required" && (
+                  {eligibilityResult?.authorization_required === 'evisa' && (
                     <div className="p-5 rounded-xl bg-amber-50 border-2 border-amber-200">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -427,13 +431,13 @@ export default function Home() {
                     >
                       Check Another Country
                     </button>
-                    {(eligibilityResult === "visa_required" || eligibilityResult === "visa_on_arrival") && (
-                      <Link
-                        href="https://evisa-app.bluespacefinancial.cloud/login"
+                    {(eligibilityResult?.authorization_required === 'evisa' || eligibilityResult?.authorization_required === 'eta') && (
+                      <button
+                        onClick={proceedToApplication}
                         className="flex-1 inline-flex items-center justify-center gap-2 bg-[#006B3F] hover:bg-[#005A34] text-white font-bold px-5 py-3 rounded-xl transition-colors shadow-lg shadow-[#006B3F]/20 text-sm"
                       >
-                        Apply Now <ArrowRight size={14} />
-                      </Link>
+                        {eligibilityResult?.authorization_required === 'eta' ? 'Apply for ETA' : 'Apply Now'} <ArrowRight size={14} />
+                      </button>
                     )}
                   </div>
                 </div>

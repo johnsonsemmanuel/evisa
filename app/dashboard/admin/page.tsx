@@ -1,9 +1,11 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useRealTimeDashboard } from "@/hooks/useRealTimeDashboard";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { MetricsSkeleton } from "@/components/ui/skeleton";
@@ -19,23 +21,40 @@ import {
   BarChart3,
   Shield,
   Settings,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import type { AdminOverview } from "@/lib/types";
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const [realtimeMetrics, setRealtimeMetrics] = useState<AdminOverview | null>(null);
+
+  // Real-time dashboard hook
+  const { isConnected } = useRealTimeDashboard({
+    agency: 'admin',
+    onMetricsUpdate: useCallback((newMetrics: any) => {
+      setRealtimeMetrics(newMetrics);
+    }, []),
+    onPaymentUpdate: useCallback((update: any) => {
+      console.log('Payment update:', update);
+      // Optionally show toast notification for new payments
+    }, []),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-overview"],
     queryFn: () =>
       api.get<AdminOverview>("/admin/reports/overview").then((r) => r.data),
-    refetchInterval: 60000,
+    refetchInterval: isConnected ? 300000 : 60000, // Reduce polling when connected to WebSocket
   });
 
-  const apps = data?.applications;
-  const payments = data?.payments;
-  const users_data = data?.users;
+  // Use real-time metrics if available, otherwise fall back to polled data
+  const currentData = realtimeMetrics || data;
+  const apps = currentData?.applications;
+  const payments = currentData?.payments;
+  const users_data = currentData?.users;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -49,13 +68,33 @@ export default function AdminDashboard() {
       title="Admin Overview"
       description="System-wide analytics and management"
       actions={
-        <Button
-          variant="secondary"
-          leftIcon={<BarChart3 size={16} />}
-          onClick={() => router.push("/dashboard/admin/reports")}
-        >
-          Full Reports
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Real-time connection indicator */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+            isConnected 
+              ? 'bg-green-100 text-green-700 border border-green-200' 
+              : 'bg-gray-100 text-gray-600 border border-gray-200'
+          }`}>
+            {isConnected ? (
+              <>
+                <Wifi size={12} />
+                Live
+              </>
+            ) : (
+              <>
+                <WifiOff size={12} />
+                Polling
+              </>
+            )}
+          </div>
+          <Button
+            variant="secondary"
+            leftIcon={<BarChart3 size={16} />}
+            onClick={() => router.push("/dashboard/admin/reports")}
+          >
+            Full Reports
+          </Button>
+        </div>
       }
     >
       {/* ── Welcome Banner ── */}

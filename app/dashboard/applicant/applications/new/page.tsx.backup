@@ -6,8 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button } from "@/components/ui/button";
-import { Select as CustomSelect } from "@/components/ui/select";
-import { PASSPORT_AUTHORITIES, getAuthorityByCountry } from "@/lib/passport-authorities";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { FileUpload } from "@/components/ui/file-upload";
 import { ProcessingSpeedModal } from "@/components/ui/processing-speed-modal";
@@ -235,19 +233,17 @@ function NewApplicationPageInner() {
   const [emailWarning, setEmailWarning] = useState("");
   const [phoneWarning, setPhoneWarning] = useState("");
   const [phoneCode, setPhoneCode] = useState("+233");
-  const [passportVerifying, setPassportVerifying] = useState(false);
-  const [passportVerificationResult, setPassportVerificationResult] = useState<any>(null);
 
   const defaultForm: Record<string, string> = {
     visa_channel: "", visa_type_id: "", service_tier_id: "", entry_type: "",
     last_name: "", first_name: "", other_names: "",
     gender: "", date_of_birth: "",
     country_of_birth: "", nationality: "",
-    passport_number: "", passport_issue_date: "", passport_expiry: "", passport_issuing_authority: "",
+    passport_number: "", passport_issue_date: "", passport_expiry: "",
     marital_status: "", profession: "",
     email: "", phone: "", phone_code: "+233",
     intended_arrival: "", duration_days: "",
-    visited_other_countries: "", visited_country_1: "", visited_country_2: "", visited_country_3: "",
+    visited_country_1: "", visited_country_2: "", visited_country_3: "",
   };
 
   const [form, setForm] = useState<Record<string, string>>(defaultForm);
@@ -305,18 +301,6 @@ function NewApplicationPageInner() {
 
   const set = useCallback((k: string, v: string) => setForm((p) => ({ ...p, [k]: v })), []);
 
-  const handleNationalityChange = useCallback((nationality: string) => {
-    set("nationality", nationality);
-    
-    // Auto-populate issuing authority based on nationality
-    const authority = getAuthorityByCountry(nationality);
-    if (authority) {
-      set("passport_issuing_authority", authority);
-    }
-    
-    setPassportVerificationResult(null);
-  }, [set]);
-
   // Restore saved draft on mount
   useEffect(() => {
     if (isRestored.current) return;
@@ -353,7 +337,6 @@ function NewApplicationPageInner() {
           passport_number: app.passport_number || prev.passport_number,
           passport_issue_date: app.passport_issue_date || prev.passport_issue_date,
           passport_expiry: app.passport_expiry || prev.passport_expiry,
-          passport_issuing_authority: app.passport_issuing_authority || prev.passport_issuing_authority,
           email: app.email || prev.email,
           phone: app.phone || prev.phone,
 
@@ -449,13 +432,12 @@ function NewApplicationPageInner() {
         passport_number: form.passport_number,
         passport_issue_date: form.passport_issue_date || undefined,
         passport_expiry: form.passport_expiry || undefined,
-        passport_issuing_authority: form.passport_issuing_authority || undefined,
         country_of_birth: form.country_of_birth || undefined,
       });
       setApplication(res.data.application);
-      saveDraft(form, 2, res.data.application.id?.toString());
+      saveDraft(form, 3, res.data.application.id?.toString());
       toast.success("Draft application created");
-      setCurrentStep(2);
+      setCurrentStep(3);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
       if (error.response?.data?.errors) {
@@ -478,12 +460,6 @@ function NewApplicationPageInner() {
       payload.purpose_of_visit = form.purpose_of_visit || "";
       payload.port_of_entry = form.port_of_entry;
       payload.passport_expiry = form.passport_expiry;
-      
-      // Include visited countries fields
-      payload.visited_other_countries = form.visited_other_countries || null;
-      payload.visited_country_1 = form.visited_country_1 || null;
-      payload.visited_country_2 = form.visited_country_2 || null;
-      payload.visited_country_3 = form.visited_country_3 || null;
 
       // Include any dynamic fields from visa-matrix.ts that exist in the form state
       if (visaConfig) {
@@ -523,80 +499,27 @@ function NewApplicationPageInner() {
     setTimeout(() => router.push("/dashboard/applicant"), 1200);
   }, [form, currentStep, application, router]);
 
-  const verifyPassport = async () => {
-    if (!form.passport_number || !form.nationality || !form.passport_issue_date || !form.passport_expiry || !form.passport_issuing_authority) {
-      toast.error("Please fill in all passport fields including issuing authority before verifying");
-      return;
-    }
-
-    setPassportVerifying(true);
-    try {
-      const response = await api.post('/applicant/verify-passport', {
-        passport_number: form.passport_number,
-        nationality: form.nationality,
-        issue_date: form.passport_issue_date,
-        expiry_date: form.passport_expiry,
-        issuing_authority: form.passport_issuing_authority,
-      });
-
-      setPassportVerificationResult(response.data);
-      
-      if (response.data.valid) {
-        toast.success(response.data.message || "Passport verified successfully", { icon: "✅" });
-      } else {
-        toast.error(response.data.message || "Passport verification failed", { icon: "⚠️" });
-      }
-
-      if (response.data.warnings?.length > 0) {
-        response.data.warnings.forEach((warning: string) => {
-          toast(warning, { icon: "⚠️", duration: 5000 });
-        });
-      }
-
-      if (response.data.errors?.length > 0) {
-        response.data.errors.forEach((error: string) => {
-          toast.error(error, { duration: 5000 });
-        });
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to verify passport");
-      setPassportVerificationResult({ valid: false, message: "Verification failed" });
-    } finally {
-      setPassportVerifying(false);
-    }
-  };
-
   const handlePay = async (method: string) => {
     if (!application) return;
     try {
-      // Initialize real payment with selected method
-      const res = await api.post(`/applicant/applications/${application.id}/payment/initialize`, {
-        payment_method: method,
-        currency: 'USD',
-        callback_url: `${window.location.origin}/dashboard/applicant/applications/${application.id}/payment-callback`
-      });
+      // DEMO MODE: Use simulated payment for demo purposes
+      const res = await api.post(`/applicant/payment/simulate`, { application_id: application.id });
 
       if (res.data.success) {
-        const { checkout_url, reference } = res.data;
-        
-        if (checkout_url) {
-          // Redirect to payment gateway
-          window.location.href = checkout_url;
-        } else {
-          // Handle bank transfer or other manual methods
-          toast.success(res.data.message || "Payment initialized successfully");
-          setShowPaymentModal(false);
-          
-          // Show instructions for manual payment methods
-          if (method === 'bank_transfer') {
-            toast.success(
-              "Bank transfer details have been sent to your email. Please complete the transfer and upload proof of payment.",
-              { duration: 8000, icon: "🏦" }
-            );
-          }
-        }
+        clearDraft();
+        setShowPaymentModal(false);
+
+        toast.success(
+          `${res.data.message}\n\n⚠️ ${res.data.demo_note}`,
+          { duration: 3000, icon: "✅" }
+        );
+
+        // Show completion popup instead of immediate redirect
+        setTimeout(() => {
+          setShowCompletionPopup(true);
+        }, 1000);
       } else {
-        toast.error(res.data.message || "Payment initialization failed");
+        toast.error(res.data.message || "Payment simulation failed");
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -610,6 +533,11 @@ function NewApplicationPageInner() {
       if (!form.visa_type_id) e.visa_type_id = "Select your purpose of travel";
     }
     if (step === 1) {
+      if (!form.visa_type_id) e.visa_type_id = "Select your purpose of travel";
+      if (!form.entry_type) e.entry_type = "Select entry type";
+      if (!form.service_tier_id) e.service_tier_id = "Select processing speed";
+    }
+    if (step === 2) {
       if (!form.last_name.trim()) e.last_name = "Surname is required";
       if (!form.first_name.trim()) e.first_name = "First name is required";
       if (!form.gender) e.gender = "Gender is required";
@@ -619,7 +547,6 @@ function NewApplicationPageInner() {
       if (!form.passport_number.trim()) e.passport_number = "Passport number is required";
       if (!form.passport_issue_date) e.passport_issue_date = "Issue date is required";
       if (!form.passport_expiry) e.passport_expiry = "Expiry date is required";
-      if (!form.passport_issuing_authority.trim()) e.passport_issuing_authority = "Issuing authority is required";
       else {
         const expiry = new Date(form.passport_expiry);
         const sixMonths = new Date();
@@ -636,22 +563,22 @@ function NewApplicationPageInner() {
         if (phoneErr) e.phone = phoneErr;
       }
     }
-    if (step === 2 && visaConfig) {
+    if (step === 3 && visaConfig) {
       if (!form.intended_arrival) e.intended_arrival = "Arrival date is required";
       for (const f of visaConfig.specificFields) {
         if (!f.required) continue;
         if (f.conditionalOn) { const dv = form[f.conditionalOn.field]; const show = Array.isArray(f.conditionalOn.value) ? f.conditionalOn.value.includes(dv) : dv === f.conditionalOn.value; if (!show) continue; }
         if (!form[f.key]?.trim()) e[f.key] = `${f.label} is required`;
       }
-    } else if (step === 2) {
+    } else if (step === 3) {
       if (!form.intended_arrival) e.intended_arrival = "Required";
       if (!form.duration_days) e.duration_days = "Required";
     }
-    if (step === 3) {
+    if (step === 4) {
       const miss = reqDocs.filter((d) => d.required && !documents[d.key]);
       if (miss.length) { toast.error(`Upload required: ${miss.map((d) => d.label).join(", ")}`); return false; }
     }
-    if (step === 4) {
+    if (step === 5) {
       // Health Declaration validation
       if (!form.health_good_condition) e.health_good_condition = "Required";
       if (!form.health_recent_illness) e.health_recent_illness = "Required";
@@ -659,7 +586,7 @@ function NewApplicationPageInner() {
       if (!form.health_yellow_fever_vaccinated) e.health_yellow_fever_vaccinated = "Required";
       if (!form.health_chronic_conditions) e.health_chronic_conditions = "Required";
     }
-    if (step === 5) {
+    if (step === 6) {
       // Security Declaration validation
       if (declQuestions.length > 0) {
         for (const q of declQuestions) { if (!form[q.key]) e[q.key] = "Required"; }
@@ -673,8 +600,8 @@ function NewApplicationPageInner() {
 
   const nextStep = () => {
     if (!validate(currentStep)) return;
-    if (currentStep === 1) handleCreateDraft();
-    else if (currentStep === 2) handleUpdateStep(currentStep + 1);
+    if (currentStep === 2) handleCreateDraft();
+    else if (currentStep === 3) handleUpdateStep(currentStep + 1);
     else setCurrentStep((p) => Math.min(p + 1, STEPS.length - 1));
   };
 
@@ -758,7 +685,7 @@ function NewApplicationPageInner() {
             <p className="text-sm text-text-secondary mb-6">Select the option that best describes your visit.</p>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {visaTypes.map((vt) => (
+              {visaTypes.filter((vt) => vt.category !== "eta").map((vt) => (
                 <button key={vt.id} type="button" onClick={() => {
                   set("visa_type_id", vt.id.toString());
                   set("visa_channel", "e-visa");
@@ -854,8 +781,123 @@ function NewApplicationPageInner() {
           </div>
         )}
 
-        {/* ── STEP 1: Applicant Details ── */}
+        {/* ── STEP 1: Application Summary ── */}
         {currentStep === 1 && (
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary mb-1">Application Summary</h2>
+            <p className="text-sm text-text-secondary mb-6">Review your selections before proceeding to fill in your details.</p>
+
+            {selVT ? (
+              <div className="space-y-4">
+                {/* Visa Type Selection */}
+                <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <CheckCircle size={20} className="text-accent" />
+                      <div>
+                        <p className="font-semibold text-text-primary">{selVT.name}</p>
+                        <p className="text-xs text-text-muted">Purpose of travel selected</p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => { setCurrentStep(0); }} className="text-xs text-accent hover:underline cursor-pointer">
+                      Change Selection
+                    </button>
+                  </div>
+                </div>
+
+                {/* Entry Type Selection */}
+                {form.entry_type && (
+                  <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <CheckCircle size={20} className="text-accent" />
+                        <div>
+                          <p className="font-semibold text-text-primary">{form.entry_type === "multiple" ? "Multiple Entry" : "Single Entry"}</p>
+                          <p className="text-xs text-text-muted">Entry type selected</p>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => setShowEntryTypeModal(true)} className="text-xs text-accent hover:underline cursor-pointer">
+                        Change Entry Type
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Processing Speed Selection */}
+                {form.service_tier_id && selST && (
+                  <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <CheckCircle size={20} className="text-accent" />
+                        <div>
+                          <p className="font-semibold text-text-primary">{selST.name}</p>
+                          <p className="text-xs text-text-muted">{selST.processing_time_display} processing</p>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => setShowSpeedModal(true)} className="text-xs text-accent hover:underline cursor-pointer">
+                        Change Speed
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Complete Pricing */}
+                {form.entry_type && form.service_tier_id && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-accent/5 to-primary/5 border border-accent/20">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-text-muted uppercase tracking-wider font-medium">Total Amount</p>
+                          <p className="text-3xl font-bold text-accent">
+                            ${fees.total > 0 ? fees.total.toFixed(2) : (260 * (form.entry_type === "multiple" ? 1.8 : 1) * (selST ? Number(selST.fee_multiplier) || 1 : 1)).toFixed(2)}
+                          </p>
+                          <p className="text-xs text-text-muted mt-0.5">
+                            {fees.total > 0
+                              ? `$${fees.base.toFixed(2)} + $${fees.entry.toFixed(2)} + $${fees.processing.toFixed(2)}`
+                              : `$260 × ${(form.entry_type === "multiple" ? 1.8 : 1).toFixed(1)} × ${(selST ? Number(selST.fee_multiplier) || 1 : 1).toFixed(1)}`}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-text-muted">Ready to proceed?</p>
+                          <p className="text-xs text-accent">Continue to fill your details</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing Items Alert */}
+                {(!form.entry_type || !form.service_tier_id) && (
+                  <div className="p-4 rounded-xl bg-warning/5 border border-warning/30">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle size={20} className="text-warning" />
+                      <div>
+                        <p className="text-sm font-semibold text-warning">Complete Your Selection</p>
+                        <p className="text-xs text-text-muted">
+                          {!form.entry_type && "Please select an entry type. "}
+                          {!form.service_tier_id && "Please select a processing speed."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mx-auto mb-4">
+                  <Compass size={32} className="text-text-muted" />
+                </div>
+                <p className="text-text-muted">No visa type selected yet.</p>
+                <button type="button" onClick={() => setCurrentStep(0)} className="mt-4 text-accent hover:underline cursor-pointer">
+                  Go back to select visa type
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── STEP 2: Applicant Details ── */}
+        {currentStep === 2 && (
           <div>
             <h2 className="text-lg font-semibold text-text-primary mb-1">Applicant Details</h2>
             <p className="text-sm text-text-secondary mb-6">Please provide your personal and passport information.</p>
@@ -876,7 +918,7 @@ function NewApplicationPageInner() {
                 <Select label="Country of Birth *" value={form.country_of_birth} onChange={(e) => set("country_of_birth", e.target.value)} error={errors.country_of_birth} required>
                   <option value="">Select country</option>{countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </Select>
-                <Select label="Nationality *" value={form.nationality} onChange={(e) => handleNationalityChange(e.target.value)} error={errors.nationality} required>
+                <Select label="Nationality *" value={form.nationality} onChange={(e) => set("nationality", e.target.value)} error={errors.nationality} required>
                   <option value="">Select nationality</option>{countries.map((c) => <option key={c.code} value={c.code}>{c.nationality}</option>)}
                 </Select>
               </div>
@@ -887,84 +929,10 @@ function NewApplicationPageInner() {
                 <div className="w-6 h-6 rounded-md bg-primary/8 flex items-center justify-center"><span className="text-[11px] font-bold text-primary">2</span></div>
                 <h3 className="text-sm font-bold text-text-primary">Passport Information</h3>
               </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Input label="Passport Number *" value={form.passport_number} onChange={(e) => {
-                  set("passport_number", e.target.value.toUpperCase());
-                  setPassportVerificationResult(null);
-                }} error={errors.passport_number} placeholder="e.g. AB1234567" required />
-                <CustomSelect 
-                  label="Issuing Authority *" 
-                  value={form.passport_issuing_authority} 
-                  onChange={(value) => {
-                    set("passport_issuing_authority", value);
-                    setPassportVerificationResult(null);
-                  }}
-                  options={PASSPORT_AUTHORITIES.map(auth => ({
-                    value: auth.authority,
-                    label: auth.authority,
-                    searchText: `${auth.country} ${auth.authority}`
-                  }))}
-                  placeholder="Select issuing authority"
-                  error={errors.passport_issuing_authority}
-                  searchable
-                  required 
-                />
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Input label="Issue Date *" type="date" value={form.passport_issue_date} onChange={(e) => {
-                  set("passport_issue_date", e.target.value);
-                  setPassportVerificationResult(null);
-                }} error={errors.passport_issue_date} required />
-                <Input label="Expiry Date *" type="date" value={form.passport_expiry} onChange={(e) => {
-                  set("passport_expiry", e.target.value);
-                  setPassportVerificationResult(null);
-                }} error={errors.passport_expiry} hint="Must be valid 6+ months" required />
-              </div>
-
-              {/* Passport Verification */}
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  onClick={verifyPassport}
-                  loading={passportVerifying}
-                  disabled={!form.passport_number || !form.nationality || !form.passport_issue_date || !form.passport_expiry || !form.passport_issuing_authority}
-                  variant="secondary"
-                  leftIcon={<ShieldCheck size={16} />}
-                  className="w-full sm:w-auto"
-                >
-                  {passportVerifying ? "Verifying Passport..." : "Verify Passport"}
-                </Button>
-
-                {passportVerificationResult && (
-                  <div className={`mt-3 p-4 rounded-xl border ${
-                    passportVerificationResult.valid 
-                      ? "bg-success/5 border-success/30" 
-                      : "bg-danger/5 border-danger/30"
-                  }`}>
-                    <div className="flex items-start gap-3">
-                      {passportVerificationResult.valid ? (
-                        <CheckCircle size={20} className="text-success shrink-0 mt-0.5" />
-                      ) : (
-                        <AlertTriangle size={20} className="text-danger shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1">
-                        <p className={`text-sm font-semibold ${
-                          passportVerificationResult.valid ? "text-success" : "text-danger"
-                        }`}>
-                          {passportVerificationResult.valid ? "Passport Verified" : "Verification Failed"}
-                        </p>
-                        <p className="text-xs text-text-muted mt-1">
-                          {passportVerificationResult.message}
-                        </p>
-                        {passportVerificationResult.status && (
-                          <p className="text-xs text-text-muted mt-1">
-                            Status: {passportVerificationResult.status.replace(/_/g, " ").toUpperCase()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <div className="grid sm:grid-cols-3 gap-4">
+                <Input label="Passport Number *" value={form.passport_number} onChange={(e) => set("passport_number", e.target.value.toUpperCase())} error={errors.passport_number} placeholder="e.g. AB1234567" required />
+                <Input label="Issue Date *" type="date" value={form.passport_issue_date} onChange={(e) => set("passport_issue_date", e.target.value)} error={errors.passport_issue_date} required />
+                <Input label="Expiry Date *" type="date" value={form.passport_expiry} onChange={(e) => set("passport_expiry", e.target.value)} error={errors.passport_expiry} hint="Must be valid 6+ months" required />
               </div>
             </div>
 
@@ -1060,7 +1028,7 @@ function NewApplicationPageInner() {
         )}
 
         {/* ── STEP 3: Travel Details (visa-specific merged) ── */}
-        {currentStep === 2 && (
+        {currentStep === 3 && (
           <div>
             <h2 className="text-lg font-semibold text-text-primary mb-1">{visaConfig?.stepTitle || "Travel Details"}</h2>
             <p className="text-sm text-text-secondary mb-6">{visaConfig?.stepDescription || "Provide your travel and stay information."}</p>
@@ -1093,56 +1061,29 @@ function NewApplicationPageInner() {
             <div className="mt-8">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border-light">
                 <Globe size={16} className="text-primary" />
-                <h3 className="text-sm font-bold text-text-primary">Travel History</h3>
+                <h3 className="text-sm font-bold text-text-primary">Countries Visited (Optional)</h3>
               </div>
-              
-              {/* Yes/No Question */}
-              <div className="mb-6">
-                <Select 
-                  label="Have you visited other countries in the past 5 years?" 
-                  value={form.visited_other_countries} 
-                  onChange={(e) => {
-                    set("visited_other_countries", e.target.value);
-                    // Clear country selections if user selects "No"
-                    if (e.target.value === "no") {
-                      set("visited_country_1", "");
-                      set("visited_country_2", "");
-                      set("visited_country_3", "");
-                    }
-                  }}
-                >
-                  <option value="">-- Select --</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+              <p className="text-xs text-text-muted mb-4">List up to 3 countries you have visited in the past 5 years</p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <Select label="Country 1" value={form.visited_country_1} onChange={(e) => set("visited_country_1", e.target.value)}>
+                  <option value="">-- Select Country --</option>
+                  {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </Select>
+                <Select label="Country 2" value={form.visited_country_2} onChange={(e) => set("visited_country_2", e.target.value)}>
+                  <option value="">-- Select Country --</option>
+                  {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </Select>
+                <Select label="Country 3" value={form.visited_country_3} onChange={(e) => set("visited_country_3", e.target.value)}>
+                  <option value="">-- Select Country --</option>
+                  {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </Select>
               </div>
-
-              {/* Countries List - Only show if user selected "Yes" */}
-              {form.visited_other_countries === "yes" && (
-                <div>
-                  <p className="text-xs text-text-muted mb-4">List up to 3 countries you have visited in the past 5 years</p>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <Select label="Country 1" value={form.visited_country_1} onChange={(e) => set("visited_country_1", e.target.value)}>
-                      <option value="">-- Select Country --</option>
-                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </Select>
-                    <Select label="Country 2" value={form.visited_country_2} onChange={(e) => set("visited_country_2", e.target.value)}>
-                      <option value="">-- Select Country --</option>
-                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </Select>
-                    <Select label="Country 3" value={form.visited_country_3} onChange={(e) => set("visited_country_3", e.target.value)}>
-                      <option value="">-- Select Country --</option>
-                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </Select>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
 
         {/* ── STEP 4: Document Upload ── */}
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <div>
             <h2 className="text-lg font-semibold text-text-primary mb-1">Document Upload</h2>
             <p className="text-sm text-text-secondary mb-2">Upload the required documents to support your application.</p>
@@ -1206,7 +1147,7 @@ function NewApplicationPageInner() {
         )}
 
         {/* ── STEP 5: Health Declaration ── */}
-        {currentStep === 4 && (
+        {currentStep === 5 && (
           <div>
             <div className="flex items-center gap-3 mb-1">
               <ShieldCheck size={22} className="text-success" />
@@ -1340,7 +1281,7 @@ function NewApplicationPageInner() {
         )}
 
         {/* ── STEP 6: Security & Travel Declaration ── */}
-        {currentStep === 5 && (
+        {currentStep === 6 && (
           <div>
             <div className="flex items-center gap-3 mb-1">
               <ShieldCheck size={22} className="text-primary" />
@@ -1394,7 +1335,7 @@ function NewApplicationPageInner() {
         )}
 
         {/* ── STEP 7: Review & Payment ── */}
-        {currentStep === 6 && (
+        {currentStep === 7 && (
           <div>
             <h2 className="text-lg font-semibold text-text-primary mb-1">Review Your Application</h2>
             <p className="text-sm text-text-secondary mb-6">Please confirm all details before proceeding to payment.</p>
@@ -1421,7 +1362,6 @@ function NewApplicationPageInner() {
                   <div><p className="text-xs text-text-muted">Date of Birth</p><p className="text-sm font-medium text-text-primary">{form.date_of_birth}</p></div>
                   <div><p className="text-xs text-text-muted">Nationality</p><p className="text-sm font-medium text-text-primary">{countryName(form.nationality)}</p></div>
                   <div><p className="text-xs text-text-muted">Passport</p><p className="text-sm font-medium text-text-primary">{form.passport_number}</p></div>
-                  <div><p className="text-xs text-text-muted">Issuing Authority</p><p className="text-sm font-medium text-text-primary">{form.passport_issuing_authority}</p></div>
                   <div><p className="text-xs text-text-muted">Passport Expiry</p><p className="text-sm font-medium text-text-primary">{form.passport_expiry}</p></div>
                   <div><p className="text-xs text-text-muted">Email</p><p className="text-sm font-medium text-text-primary">{form.email}</p></div>
                   <div><p className="text-xs text-text-muted">Phone</p><p className="text-sm font-medium text-text-primary">{form.phone}</p></div>
@@ -1515,7 +1455,7 @@ function NewApplicationPageInner() {
             {lastSaved && <span className="text-[11px] text-text-muted hidden sm:block">Saved at {lastSaved}</span>}
             {currentStep < STEPS.length - 1 ? (
               <Button onClick={nextStep} loading={loading}
-                disabled={(currentStep === 0 && (!form.visa_type_id || !form.entry_type || !form.service_tier_id))}>
+                disabled={(currentStep === 0 && !form.visa_type_id) || (currentStep === 1 && (!form.visa_type_id || !form.entry_type || !form.service_tier_id))}>
                 Continue <ArrowRight size={16} className="ml-1" />
               </Button>
             ) : (

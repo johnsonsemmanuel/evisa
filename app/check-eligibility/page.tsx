@@ -6,40 +6,43 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { countries } from "@/lib/countries";
 import { Globe, CheckCircle, XCircle, AlertTriangle, ArrowRight, Home } from "lucide-react";
+import axios from "axios";
 
 export default function CheckEligibilityPage() {
   const router = useRouter();
   const [nationality, setNationality] = useState("");
-  const [result, setResult] = useState<"visa_required" | "visa_on_arrival" | "no_visa" | null>(null);
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Countries eligible for Visa on Arrival
-  const visaOnArrivalCountries = [
-    "US", "GB", "CA", "AU", "NZ", "JP", "KR", "SG", "MY", "ZA",
-    "DE", "FR", "IT", "ES", "NL", "BE", "SE", "NO", "DK", "FI",
-    "AT", "CH", "IE", "PT", "GR", "PL", "CZ", "HU", "RO", "BG"
-  ];
-
-  // ECOWAS countries - no visa required
-  const ecowasCountries = [
-    "BJ", "BF", "CV", "CI", "GM", "GN", "GW", "LR", "ML", "NE", 
-    "NG", "SN", "SL", "TG"
-  ];
-
-  const checkEligibility = () => {
+  const checkEligibility = async () => {
     if (!nationality) return;
-
-    if (ecowasCountries.includes(nationality)) {
-      setResult("no_visa");
-    } else if (visaOnArrivalCountries.includes(nationality)) {
-      setResult("visa_on_arrival");
-    } else {
-      setResult("visa_required");
+    
+    setLoading(true);
+    try {
+      const response = await axios.post('/api/eta/check-eligibility', {
+        nationality: nationality
+      });
+      setResult(response.data);
+    } catch (error) {
+      console.error('Eligibility check failed:', error);
+      alert('Failed to check eligibility. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const reset = () => {
     setNationality("");
     setResult(null);
+  };
+
+  const proceedToApplication = () => {
+    if (result?.authorization_required === 'eta') {
+      router.push(`/apply/eta?nationality=${nationality}`);
+    } else {
+      // Redirect to visa application
+      router.push(`/login`);
+    }
   };
 
   return (
@@ -102,10 +105,11 @@ export default function CheckEligibilityPage() {
 
                 <Button
                   onClick={checkEligibility}
-                  disabled={!nationality}
+                  disabled={!nationality || loading}
                   className="w-full"
                   size="lg"
                   leftIcon={<CheckCircle size={18} />}
+                  loading={loading}
                 >
                   Check Eligibility
                 </Button>
@@ -113,16 +117,16 @@ export default function CheckEligibilityPage() {
             ) : (
               <div className="space-y-6">
                 {/* Result Display */}
-                {result === "no_visa" && (
+                {result?.authorization_required === 'none' && (
                   <div className="p-6 rounded-xl bg-success/5 border-2 border-success">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
                         <CheckCircle size={24} className="text-success" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold text-success mb-2">No Visa Required!</h3>
+                        <h3 className="text-xl font-bold text-success mb-2">No Authorization Required!</h3>
                         <p className="text-text-secondary mb-4">
-                          As an ECOWAS citizen, you can enter Ghana without a visa. You are allowed to stay for up to 90 days.
+                          {result.details.message}
                         </p>
                         <div className="p-4 rounded-lg bg-white border border-success/20">
                           <p className="text-sm font-semibold text-text-primary mb-2">What you need:</p>
@@ -137,31 +141,30 @@ export default function CheckEligibilityPage() {
                   </div>
                 )}
 
-                {result === "visa_on_arrival" && (
+                {result?.authorization_required === 'eta' && (
                   <div className="p-6 rounded-xl bg-info/5 border-2 border-info">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-full bg-info/10 flex items-center justify-center flex-shrink-0">
                         <AlertTriangle size={24} className="text-info" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold text-info mb-2">Visa on Arrival Available</h3>
+                        <h3 className="text-xl font-bold text-info mb-2">ETA Required</h3>
                         <p className="text-text-secondary mb-4">
-                          You are eligible for a visa on arrival at Kotoka International Airport. However, we recommend applying for an eVisa in advance for a smoother experience.
+                          {result.details.message}
                         </p>
                         <div className="p-4 rounded-lg bg-white border border-info/20 mb-4">
-                          <p className="text-sm font-semibold text-text-primary mb-2">Visa on Arrival Requirements:</p>
+                          <p className="text-sm font-semibold text-text-primary mb-2">ETA Details:</p>
                           <ul className="text-sm text-text-secondary space-y-1 list-disc list-inside">
-                            <li>Valid passport (at least 6 months validity)</li>
-                            <li>Completed arrival form</li>
-                            <li>Visa fee payment (cash USD)</li>
-                            <li>Proof of accommodation</li>
-                            <li>Return ticket</li>
+                            <li>Fee: ${result.details.fee || 'Free'}</li>
+                            <li>Validity: {result.details.validity_days} days</li>
+                            <li>Entry Type: {result.details.entry_type}</li>
+                            <li>Processing: Instant (if no flags)</li>
                           </ul>
                         </div>
                         <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
-                          <p className="text-sm font-semibold text-accent mb-1">💡 Recommended: Apply for eVisa</p>
+                          <p className="text-sm font-semibold text-accent mb-1">💡 Quick & Easy</p>
                           <p className="text-xs text-text-secondary">
-                            Skip the airport queues and get your visa approved before you travel. Processing takes 24-48 hours.
+                            ETA applications are processed automatically and issued within minutes.
                           </p>
                         </div>
                       </div>
@@ -169,7 +172,7 @@ export default function CheckEligibilityPage() {
                   </div>
                 )}
 
-                {result === "visa_required" && (
+                {result?.authorization_required === 'evisa' && (
                   <div className="p-6 rounded-xl bg-warning/5 border-2 border-warning">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center flex-shrink-0">
@@ -178,7 +181,7 @@ export default function CheckEligibilityPage() {
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-warning mb-2">Visa Required</h3>
                         <p className="text-text-secondary mb-4">
-                          You need to obtain a visa before traveling to Ghana. The good news is you can apply online for an eVisa!
+                          You need to obtain a visa before traveling to Ghana. You can apply online for an eVisa!
                         </p>
                         <div className="p-4 rounded-lg bg-white border border-warning/20">
                           <p className="text-sm font-semibold text-text-primary mb-2">eVisa Application Process:</p>
@@ -200,13 +203,13 @@ export default function CheckEligibilityPage() {
                   <Button variant="secondary" onClick={reset} className="flex-1">
                     Check Another Country
                   </Button>
-                  {(result === "visa_required" || result === "visa_on_arrival") && (
+                  {(result?.authorization_required === 'evisa' || result?.authorization_required === 'eta') && (
                     <Button
-                      onClick={() => router.push("/login")}
+                      onClick={proceedToApplication}
                       className="flex-1"
                       leftIcon={<ArrowRight size={16} />}
                     >
-                      Apply for eVisa
+                      {result?.authorization_required === 'eta' ? 'Apply for ETA' : 'Apply for eVisa'}
                     </Button>
                   )}
                 </div>

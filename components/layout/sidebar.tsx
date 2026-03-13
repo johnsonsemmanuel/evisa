@@ -46,18 +46,21 @@ const navByRole: Record<UserRole, NavItem[]> = {
   GIS_REVIEWING_OFFICER: [
     { label: "Dashboard", href: "/dashboard/gis", icon: <LayoutDashboard size={20} /> },
     { label: "Case Queue", href: "/dashboard/gis/cases", icon: <FolderOpen size={20} /> },
+    { label: "Support", href: "/dashboard/gis/support", icon: <HelpCircle size={20} /> },
     { label: "SLA Alerts", href: "/dashboard/gis/sla-alerts", icon: <AlertTriangle size={20} /> },
     { label: "Payments", href: "/dashboard/gis/payments", icon: <BarChart3 size={20} /> },
   ],
   GIS_APPROVAL_OFFICER: [
     { label: "Dashboard", href: "/dashboard/gis", icon: <LayoutDashboard size={20} /> },
     { label: "Case Queue", href: "/dashboard/gis/cases", icon: <FolderOpen size={20} /> },
+    { label: "Support", href: "/dashboard/gis/support", icon: <HelpCircle size={20} /> },
     { label: "SLA Alerts", href: "/dashboard/gis/sla-alerts", icon: <AlertTriangle size={20} /> },
     { label: "Payments", href: "/dashboard/gis/payments", icon: <BarChart3 size={20} /> },
   ],
   GIS_ADMIN: [
     { label: "Dashboard", href: "/dashboard/gis", icon: <LayoutDashboard size={20} /> },
     { label: "Case Queue", href: "/dashboard/gis/cases", icon: <FolderOpen size={20} /> },
+    { label: "Support", href: "/dashboard/gis/support", icon: <HelpCircle size={20} /> },
     { label: "SLA Alerts", href: "/dashboard/gis/sla-alerts", icon: <AlertTriangle size={20} /> },
     { label: "Payments", href: "/dashboard/gis/payments", icon: <BarChart3 size={20} /> },
   ],
@@ -92,6 +95,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   gis_officer: [
     { label: "Dashboard", href: "/dashboard/gis", icon: <LayoutDashboard size={20} /> },
     { label: "Case Queue", href: "/dashboard/gis/cases", icon: <FolderOpen size={20} /> },
+    { label: "Support", href: "/dashboard/gis/support", icon: <HelpCircle size={20} /> },
     { label: "SLA Alerts", href: "/dashboard/gis/sla-alerts", icon: <AlertTriangle size={20} /> },
     { label: "Payments", href: "/dashboard/gis/payments", icon: <BarChart3 size={20} /> },
   ],
@@ -169,7 +173,11 @@ export function Sidebar() {
       <div className="p-5 border-b border-black/20">
         <div className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/gis-logo.png" alt="Ghana Immigration Service" width={44} height={36} className="drop-shadow-lg" />
+          {user.role.startsWith("GIS") || user.role === "gis_officer" ? (
+            <img src="/gis-logo-new.png" alt="Ghana Immigration Service" width={64} height={64} className="drop-shadow-lg" />
+          ) : (
+            <img src="/gis-logo.png" alt="Ghana Immigration Service" width={44} height={36} className="drop-shadow-lg" />
+          )}
           <div>
             <h1 className="text-base font-bold tracking-tight">GH-eVISA</h1>
             <p className="text-[11px] text-gold/60">Electronic Visa Platform</p>
@@ -197,10 +205,9 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                ${
-                  active
-                    ? "bg-sidebar-active text-white shadow-sm"
-                    : "text-white/60 hover:text-white hover:bg-sidebar-hover"
+                ${active
+                  ? "bg-sidebar-active text-white shadow-sm"
+                  : "text-white/60 hover:text-white hover:bg-sidebar-hover"
                 }`}
             >
               {item.icon}

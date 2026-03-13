@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useRealTimeDashboard } from "@/hooks/useRealTimeDashboard";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button } from "@/components/ui/button";
-import { StatusBadge, SlaIndicator } from "@/components/ui/badge";
+import { StatusBadge, SlaIndicator, RiskBadge } from "@/components/ui/badge";
 import { MetricsSkeleton } from "@/components/ui/skeleton";
 import {
   FolderOpen,
@@ -23,6 +24,8 @@ import {
   Users,
   TrendingUp,
   BarChart3,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import type { GisMetrics, Application } from "@/lib/types";
 
@@ -30,12 +33,28 @@ export default function GisDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
+  const [realtimeMetrics, setRealtimeMetrics] = useState<GisMetrics | null>(null);
+
+  // Real-time dashboard hook
+  const { isConnected, metrics: liveMetrics } = useRealTimeDashboard({
+    agency: 'gis',
+    onMetricsUpdate: useCallback((newMetrics: any) => {
+      setRealtimeMetrics(newMetrics);
+    }, []),
+    onApplicationStatusChange: useCallback((update: any) => {
+      // Optionally show toast notification for status changes
+      console.log('Application status changed:', update);
+    }, []),
+  });
 
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["gis-metrics"],
     queryFn: () => api.get<GisMetrics>("/gis/metrics").then((r) => r.data),
-    refetchInterval: 30000,
+    refetchInterval: isConnected ? 300000 : 30000, // Reduce polling when connected to WebSocket
   });
+
+  // Use real-time metrics if available, otherwise fall back to polled data
+  const currentMetrics = realtimeMetrics || metrics;
 
   const { data: recentCases } = useQuery({
     queryKey: ["gis-recent-cases"],
@@ -56,6 +75,8 @@ export default function GisDashboard() {
         return api.get("/gis/cases?per_page=10").then(r => r.data);
       } else if (selectedArea === "sla_alerts") {
         return api.get("/gis/cases?sla_breached=true&per_page=10").then(r => r.data);
+      } else if (selectedArea === "flagged_etas") {
+        return api.get("/gis/cases?type=eta&status=flagged&per_page=10").then(r => r.data);
       }
       return null;
     },
@@ -75,12 +96,32 @@ export default function GisDashboard() {
       title="GIS Dashboard"
       description="Ghana Immigration Service — Case overview"
       actions={
-        <Button
-          leftIcon={<FolderOpen size={16} />}
-          onClick={() => router.push("/dashboard/gis/cases")}
-        >
-          Case Queue
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Real-time connection indicator */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+            isConnected 
+              ? 'bg-green-100 text-green-700 border border-green-200' 
+              : 'bg-gray-100 text-gray-600 border border-gray-200'
+          }`}>
+            {isConnected ? (
+              <>
+                <Wifi size={12} />
+                Live
+              </>
+            ) : (
+              <>
+                <WifiOff size={12} />
+                Polling
+              </>
+            )}
+          </div>
+          <Button
+            leftIcon={<FolderOpen size={16} />}
+            onClick={() => router.push("/dashboard/gis/cases")}
+          >
+            Case Queue
+          </Button>
+        </div>
       }
     >
       {/* ── Welcome Banner ── */}
@@ -115,7 +156,7 @@ export default function GisDashboard() {
       </div>
 
       {/* ── Area Selection Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {/* Review Queue */}
         <div 
           className={`card p-6 cursor-pointer transition-all duration-200 hover:shadow-lg ${
@@ -130,7 +171,7 @@ export default function GisDashboard() {
               <FolderOpen size={24} className="text-info" />
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-text-primary">{metrics?.review_queue ?? 0}</p>
+              <p className="text-2xl font-bold text-text-primary">{currentMetrics?.review_queue ?? 0}</p>
               <p className="text-xs text-text-muted">Pending</p>
             </div>
           </div>
@@ -158,7 +199,7 @@ export default function GisDashboard() {
               <BadgeCheck size={24} className="text-warning" />
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-text-primary">{metrics?.approval_queue ?? 0}</p>
+              <p className="text-2xl font-bold text-text-primary">{currentMetrics?.approval_queue ?? 0}</p>
               <p className="text-xs text-text-muted">Pending</p>
             </div>
           </div>
@@ -186,7 +227,7 @@ export default function GisDashboard() {
               <BarChart3 size={24} className="text-success" />
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-text-primary">{metrics?.pending_review ?? 0}</p>
+              <p className="text-2xl font-bold text-text-primary">{currentMetrics?.pending_review ?? 0}</p>
               <p className="text-xs text-text-muted">Total</p>
             </div>
           </div>
@@ -214,7 +255,7 @@ export default function GisDashboard() {
               <AlertTriangle size={24} className="text-danger" />
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-text-primary">{metrics?.sla_breaches ?? 0}</p>
+              <p className="text-2xl font-bold text-text-primary">{currentMetrics?.sla_breaches ?? 0}</p>
               <p className="text-xs text-text-muted">Alerts</p>
             </div>
           </div>
@@ -225,6 +266,34 @@ export default function GisDashboard() {
               {selectedArea === "sla_alerts" ? "Click to hide details" : "Click to view details"}
             </span>
             <ChevronRight size={16} className={`text-text-muted transition-transform ${selectedArea === "sla_alerts" ? "rotate-90" : ""}`} />
+          </div>
+        </div>
+
+        {/* Flagged ETAs */}
+        <div 
+          className={`card p-6 cursor-pointer transition-all duration-200 hover:shadow-lg ${
+            selectedArea === "flagged_etas" 
+              ? "ring-2 ring-warning bg-warning/5 border-warning" 
+              : "hover:border-warning/30"
+          }`}
+          onClick={() => setSelectedArea(selectedArea === "flagged_etas" ? null : "flagged_etas")}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-warning/8 flex items-center justify-center">
+              <Shield size={24} className="text-warning" />
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-text-primary">{currentMetrics?.flagged_etas ?? 0}</p>
+              <p className="text-xs text-text-muted">Flagged</p>
+            </div>
+          </div>
+          <h3 className="font-semibold text-text-primary mb-2">Flagged ETAs</h3>
+          <p className="text-sm text-text-secondary mb-4">ETA applications requiring admin review.</p>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted">
+              {selectedArea === "flagged_etas" ? "Click to hide details" : "Click to view details"}
+            </span>
+            <ChevronRight size={16} className={`text-text-muted transition-transform ${selectedArea === "flagged_etas" ? "rotate-90" : ""}`} />
           </div>
         </div>
       </div>
@@ -239,18 +308,20 @@ export default function GisDashboard() {
                 {selectedArea === "approval_queue" && "Approval Queue Details"}
                 {selectedArea === "all_cases" && "All Cases"}
                 {selectedArea === "sla_alerts" && "SLA Alerts"}
+                {selectedArea === "flagged_etas" && "Flagged ETAs"}
               </h2>
               <p className="text-xs text-text-muted mt-0.5">
                 {selectedArea === "review_queue" && "Applications waiting for initial review"}
                 {selectedArea === "approval_queue" && "Applications ready for final approval"}
                 {selectedArea === "all_cases" && "Complete overview of all applications"}
                 {selectedArea === "sla_alerts" && "Applications requiring urgent attention"}
+                {selectedArea === "flagged_etas" && "ETA applications flagged for admin review"}
               </p>
             </div>
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => router.push(`/dashboard/gis/cases${selectedArea === "review_queue" ? "?queue=review_queue" : selectedArea === "approval_queue" ? "?queue=approval_queue" : selectedArea === "sla_alerts" ? "?sla_breached=true" : ""}`)}
+              onClick={() => router.push(`/dashboard/gis/cases${selectedArea === "review_queue" ? "?queue=review_queue" : selectedArea === "approval_queue" ? "?queue=approval_queue" : selectedArea === "sla_alerts" ? "?sla_breached=true" : selectedArea === "flagged_etas" ? "?type=eta&status=flagged" : ""}`)}
             >
               View All <ArrowRight size={13} className="ml-1" />
             </Button>
@@ -273,6 +344,7 @@ export default function GisDashboard() {
                 {selectedArea === "approval_queue" && "No applications pending approval"}
                 {selectedArea === "all_cases" && "No applications found"}
                 {selectedArea === "sla_alerts" && "No SLA breaches found"}
+                {selectedArea === "flagged_etas" && "No flagged ETAs found"}
               </p>
             </div>
           ) : (
@@ -310,6 +382,9 @@ export default function GisDashboard() {
                           <span className="px-2 py-0.5 rounded-full bg-surface">
                             {app.current_queue.replace('_', ' ')}
                           </span>
+                        )}
+                        {app.risk_level && (
+                          <RiskBadge level={app.risk_level} score={app.risk_score} showScore />
                         )}
                         {hoursLeft !== null && (
                           <SlaIndicator hoursLeft={hoursLeft} isWithinSla={hoursLeft > 0} />
@@ -391,6 +466,9 @@ export default function GisDashboard() {
                         {app.assigned_officer && (
                           <span>{app.assigned_officer.first_name} {app.assigned_officer.last_name}</span>
                         )}
+                        {app.risk_level && (
+                          <RiskBadge level={app.risk_level} score={app.risk_score} />
+                        )}
                         {hoursLeft !== null && (
                           <SlaIndicator hoursLeft={hoursLeft} isWithinSla={hoursLeft > 0} />
                         )}
@@ -420,7 +498,7 @@ export default function GisDashboard() {
               </div>
               <div>
                 <p className="font-semibold text-text-primary text-sm">Review Queue</p>
-                <p className="text-xs text-text-muted">{metrics?.review_queue ?? 0} cases awaiting review</p>
+                <p className="text-xs text-text-muted">{currentMetrics?.review_queue ?? 0} cases awaiting review</p>
               </div>
             </div>
           </button>
@@ -434,7 +512,7 @@ export default function GisDashboard() {
               </div>
               <div>
                 <p className="font-semibold text-text-primary text-sm">Approval Queue</p>
-                <p className="text-xs text-text-muted">{metrics?.approval_queue ?? 0} pending approval</p>
+                <p className="text-xs text-text-muted">{currentMetrics?.approval_queue ?? 0} pending approval</p>
               </div>
             </div>
           </button>
@@ -448,7 +526,7 @@ export default function GisDashboard() {
               </div>
               <div>
                 <p className="font-semibold text-text-primary text-sm">SLA Alerts</p>
-                <p className="text-xs text-text-muted">{metrics?.sla_breaches ?? 0} breaches detected</p>
+                <p className="text-xs text-text-muted">{currentMetrics?.sla_breaches ?? 0} breaches detected</p>
               </div>
             </div>
           </button>
