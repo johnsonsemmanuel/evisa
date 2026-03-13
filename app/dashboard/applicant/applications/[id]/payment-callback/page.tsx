@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 
-export default function PaymentCallbackPage() {
+function PaymentCallbackContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,27 +33,31 @@ export default function PaymentCallbackPage() {
       // Verify payment with backend
       const response = await api.post('/applicant/payment/verify', { reference });
       
-      if (response.data.success) {
-        setStatus(response.data.status === 'completed' ? 'success' : 'pending');
-        setMessage(response.data.message || 'Payment processed successfully');
-        setPaymentDetails(response.data.payment);
-        
-        if (response.data.status === 'completed') {
-          toast.success('Payment completed successfully! Your application is now being processed.', {
-            duration: 5000,
-            icon: '✅'
-          });
-        } else if (response.data.status === 'pending_verification') {
-          toast.success('Payment received and is being verified. You will be notified once confirmed.', {
-            duration: 5000,
-            icon: '⏳'
-          });
-        }
-      } else {
-        setStatus('failed');
-        setMessage(response.data.message || 'Payment verification failed');
-        toast.error(response.data.message || 'Payment failed');
+      if (response.data.success && response.data.status === 'completed') {
+        // Payment successful - redirect to dashboard
+        toast.success('Payment completed successfully! Your application is now being processed.', {
+          duration: 5000,
+          icon: '✅'
+        });
+        router.push('/dashboard/applicant');
+        return;
       }
+      
+      if (response.data.success && response.data.status === 'pending_verification') {
+        // Payment pending verification - redirect to dashboard
+        toast.success('Payment received and is being verified. You will be notified once confirmed.', {
+          duration: 5000,
+          icon: '⏳'
+        });
+        router.push('/dashboard/applicant');
+        return;
+      }
+      
+      // Payment verification failed
+      setStatus('failed');
+      setMessage(response.data.message || 'Payment verification failed');
+      toast.error(response.data.message || 'Payment failed');
+      
     } catch (error: any) {
       console.error('Payment verification error:', error);
       setStatus('failed');
@@ -170,5 +174,13 @@ export default function PaymentCallbackPage() {
         </div>
       </div>
     </DashboardShell>
+  );
+}
+
+export default function PaymentCallbackPage() {
+  return (
+    <Suspense fallback={<DashboardShell title="Payment Status"><div className="flex items-center justify-center h-96"><Loader2 className="animate-spin" /></div></DashboardShell>}>
+      <PaymentCallbackContent />
+    </Suspense>
   );
 }

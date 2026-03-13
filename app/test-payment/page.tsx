@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, CreditCard, Loader2 } from "lucide-react";
 
-export default function TestPaymentPage() {
+function TestPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [processing, setProcessing] = useState(false);
@@ -137,5 +137,13 @@ export default function TestPaymentPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function TestPaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
+      <TestPaymentContent />
+    </Suspense>
   );
 }

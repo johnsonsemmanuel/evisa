@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { countries } from "@/lib/countries";
@@ -35,6 +35,33 @@ interface EtaFormData {
 }
 
 export default function EtaApplicationPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <EtaApplicationPageContent />
+    </Suspense>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-accent/5">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl border border-border shadow-lg p-8 animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-12 bg-gray-200 rounded"></div>
+              <div className="h-12 bg-gray-200 rounded"></div>
+              <div className="h-12 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EtaApplicationPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nationality = searchParams.get('nationality') || '';
