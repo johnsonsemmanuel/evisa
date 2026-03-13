@@ -9,7 +9,7 @@ import Pusher from 'pusher-js';
 declare global {
   interface Window {
     Pusher: typeof Pusher;
-    Echo: Echo;
+    Echo: Echo<any>;
   }
 }
 
@@ -58,10 +58,19 @@ export function useRealTimeDashboard({
   const { user, token } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [metrics, setMetrics] = useState<DashboardMetrics>({});
-  const echoRef = useRef<Echo | null>(null);
+  const echoRef = useRef<Echo<any> | null>(null);
 
   useEffect(() => {
     if (!user || !token) return;
+
+    // Check if Pusher is configured
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_APP_KEY;
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER;
+
+    if (!pusherKey || !pusherCluster) {
+      console.log('Pusher not configured, skipping real-time dashboard');
+      return;
+    }
 
     // Initialize Laravel Echo with Pusher
     if (!window.Pusher) {
@@ -71,8 +80,8 @@ export function useRealTimeDashboard({
     if (!echoRef.current) {
       echoRef.current = new Echo({
         broadcaster: 'pusher',
-        key: process.env.NEXT_PUBLIC_PUSHER_APP_KEY,
-        cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
+        key: pusherKey,
+        cluster: pusherCluster,
         forceTLS: true,
         auth: {
           headers: {

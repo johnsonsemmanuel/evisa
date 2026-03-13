@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { countries } from "@/lib/countries";
-import { Globe, CheckCircle, AlertTriangle, ArrowRight, Home, Upload, User, Passport, Plane, Shield } from "lucide-react";
+import { Globe, CheckCircle, AlertTriangle, ArrowRight, Home, Upload, User, UserCheck, Plane, Shield } from "lucide-react";
 import axios from "axios";
 
 interface EtaFormData {
@@ -144,7 +144,7 @@ export default function EtaApplicationPage() {
 
   const steps = [
     { number: 1, title: "Personal Information", icon: <User size={20} /> },
-    { number: 2, title: "Passport Information", icon: <Passport size={20} /> },
+    { number: 2, title: "Passport Information", icon: <UserCheck size={20} /> },
     { number: 3, title: "Travel Information", icon: <Plane size={20} /> },
     { number: 4, title: "Security Declarations", icon: <Shield size={20} /> },
     { number: 5, title: "Review & Submit", icon: <CheckCircle size={20} /> },

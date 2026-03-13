@@ -36,18 +36,22 @@ export default function PaymentPage() {
     if (!application) return;
     try {
       // Initialize real payment with selected method
+      // Use GHS for local payment methods, USD for international
+      const currency = method === 'gcb' || method === 'paystack' ? 'GHS' : 'USD';
+      
       const res = await api.post(`/applicant/applications/${application.id}/payment/initialize`, {
         payment_method: method,
-        currency: 'USD',
+        currency: currency,
         callback_url: `${window.location.origin}/dashboard/applicant/applications/${application.id}/payment-callback`
       });
 
       if (res.data.success) {
-        const { checkout_url, reference } = res.data;
+        const { checkout_url, authorization_url, reference } = res.data;
         
-        if (checkout_url) {
+        const redirectUrl = checkout_url || authorization_url;
+        if (redirectUrl) {
           // Redirect to payment gateway
-          window.location.href = checkout_url;
+          window.location.href = redirectUrl;
         } else {
           // Handle bank transfer or other manual methods
           toast.success(res.data.message || "Payment initialized successfully");
@@ -104,9 +108,9 @@ export default function PaymentPage() {
   // Calculate fees (simplified for now)
   const fees = {
     base: 260.00,
-    processing: application.tier === "express" ? 130.00 : application.tier === "priority" ? 78.00 : 0,
+    processing: application.processing_tier === "express" ? 130.00 : application.processing_tier === "fast_track" ? 78.00 : 0,
     entry: application.visa_type?.entry_type === "multiple" ? 208.00 : 0,
-    total: 260.00 + (application.tier === "express" ? 130.00 : application.tier === "priority" ? 78.00 : 0) + (application.visa_type?.entry_type === "multiple" ? 208.00 : 0)
+    total: 260.00 + (application.processing_tier === "express" ? 130.00 : application.processing_tier === "fast_track" ? 78.00 : 0) + (application.visa_type?.entry_type === "multiple" ? 208.00 : 0)
   };
 
   return (

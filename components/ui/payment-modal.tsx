@@ -13,12 +13,14 @@ interface PaymentMethod {
   icon: string;
   currencies: string[];
   countries: string[];
+  badge?: string | null;
 }
 
 interface PaymentModalProps {
   open: boolean;
   onClose: () => void;
   onPay: (method: string) => Promise<void>;
+  onPayLater?: () => Promise<void>;
   totalFee: number;
   currency?: string;
   breakdown: { label: string; amount: number }[];
@@ -42,10 +44,22 @@ const getIconComponent = (iconName: string) => {
   }
 };
 
+const getBadgeColor = (badge: string | null) => {
+  switch (badge) {
+    case 'Popular':
+      return 'bg-accent/10 text-accent';
+    case 'Local':
+      return 'bg-info/10 text-info';
+    default:
+      return '';
+  }
+};
+
 export function PaymentModal({
   open,
   onClose,
   onPay,
+  onPayLater,
   totalFee,
   currency = "USD",
   breakdown,
@@ -82,26 +96,28 @@ export function PaymentModal({
       // Fallback to basic methods if API fails
       setPaymentMethods([
         {
-          id: 'paystack_card',
+          id: 'paystack',
           provider: 'paystack',
-          name: 'Card Payment',
-          description: 'Pay with Visa, Mastercard, or Verve',
+          name: 'Paystack',
+          description: 'Pay with cards, mobile money, or bank transfer',
           icon: 'credit-card',
           currencies: ['GHS', 'USD'],
           countries: ['GH'],
+          badge: 'Popular',
         },
         {
-          id: 'paystack_mobile_money',
-          provider: 'paystack',
-          name: 'Mobile Money',
-          description: 'MTN MoMo, Vodafone Cash, AirtelTigo Money',
-          icon: 'smartphone',
+          id: 'gcb',
+          provider: 'gcb',
+          name: 'GCB Payment Gateway',
+          description: 'Pay with cards, mobile money, or bank account via GCB',
+          icon: 'building',
           currencies: ['GHS'],
           countries: ['GH'],
+          badge: 'Local',
         },
       ]);
       if (!selectedMethod) {
-        setSelectedMethod('paystack_card');
+        setSelectedMethod('paystack');
       }
     } finally {
       setLoadingMethods(false);
@@ -197,14 +213,9 @@ export function PaymentModal({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-text-primary">{method.name}</span>
-                      {method.provider === 'paystack' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
-                          Popular
-                        </span>
-                      )}
-                      {method.provider === 'gcb' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-info/10 text-info font-medium">
-                          Local
+                      {method.badge && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getBadgeColor(method.badge)}`}>
+                          {method.badge}
                         </span>
                       )}
                     </div>
@@ -269,13 +280,24 @@ export function PaymentModal({
         <div className="sticky bottom-0 bg-white border-t border-border rounded-b-2xl px-6 py-4 flex items-center justify-between">
           {!processing ? (
             <button
-              onClick={onClose}
+              onClick={async () => {
+                if (onPayLater) {
+                  setProcessing(true);
+                  try {
+                    await onPayLater();
+                  } finally {
+                    setProcessing(false);
+                  }
+                } else {
+                  onClose();
+                }
+              }}
               className="text-sm text-text-secondary hover:text-text-primary transition-colors duration-150 ease-out"
             >
               Pay Later
             </button>
           ) : (
-            <span className="text-sm text-text-muted">Processing payment...</span>
+            <span className="text-sm text-text-muted">Processing...</span>
           )}
           <Button
             onClick={handlePay}

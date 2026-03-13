@@ -247,7 +247,6 @@ function NewApplicationPageInner() {
     marital_status: "", profession: "",
     email: "", phone: "", phone_code: "+233",
     intended_arrival: "", duration_days: "",
-    visited_other_countries: "", visited_country_1: "", visited_country_2: "", visited_country_3: "",
   };
 
   const [form, setForm] = useState<Record<string, string>>(defaultForm);
@@ -366,10 +365,6 @@ function NewApplicationPageInner() {
           accommodation_type: app.accommodation_type || prev.accommodation_type,
           address_in_ghana: app.address_in_ghana || prev.address_in_ghana,
           purpose_of_visit: app.purpose_of_visit || prev.purpose_of_visit,
-          visited_other_countries: app.visited_other_countries || prev.visited_other_countries,
-          visited_country_1: app.visited_country_1 || prev.visited_country_1,
-          visited_country_2: app.visited_country_2 || prev.visited_country_2,
-          visited_country_3: app.visited_country_3 || prev.visited_country_3,
 
           // Health Details
           health_good_condition: app.health_good_condition || prev.health_good_condition,
@@ -479,12 +474,6 @@ function NewApplicationPageInner() {
       payload.port_of_entry = form.port_of_entry;
       payload.passport_expiry = form.passport_expiry;
       
-      // Include visited countries fields
-      payload.visited_other_countries = form.visited_other_countries || null;
-      payload.visited_country_1 = form.visited_country_1 || null;
-      payload.visited_country_2 = form.visited_country_2 || null;
-      payload.visited_country_3 = form.visited_country_3 || null;
-
       // Include any dynamic fields from visa-matrix.ts that exist in the form state
       if (visaConfig) {
         for (const field of visaConfig.specificFields) {
@@ -566,22 +555,49 @@ function NewApplicationPageInner() {
     }
   };
 
+  const handlePayLater = async () => {
+    if (!application) return;
+    try {
+      const res = await api.post(`/applicant/applications/${application.id}/submit-without-payment`);
+      
+      if (res.data.application) {
+        setApplication(res.data.application);
+        toast.success("Application submitted successfully! Complete payment to begin processing.", { 
+          duration: 5000,
+          icon: "📋" 
+        });
+        setShowPaymentModal(false);
+        clearDraft();
+        
+        // Show completion popup
+        setShowCompletionPopup(true);
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Failed to submit application");
+    }
+  };
+
   const handlePay = async (method: string) => {
     if (!application) return;
     try {
       // Initialize real payment with selected method
+      // Use GHS for local payment methods, USD for international
+      const currency = method === 'gcb' || method === 'paystack' ? 'GHS' : 'USD';
+      
       const res = await api.post(`/applicant/applications/${application.id}/payment/initialize`, {
         payment_method: method,
-        currency: 'USD',
+        currency: currency,
         callback_url: `${window.location.origin}/dashboard/applicant/applications/${application.id}/payment-callback`
       });
 
       if (res.data.success) {
-        const { checkout_url, reference } = res.data;
+        const { checkout_url, authorization_url, reference } = res.data;
         
-        if (checkout_url) {
+        const redirectUrl = checkout_url || authorization_url;
+        if (redirectUrl) {
           // Redirect to payment gateway
-          window.location.href = checkout_url;
+          window.location.href = redirectUrl;
         } else {
           // Handle bank transfer or other manual methods
           toast.success(res.data.message || "Payment initialized successfully");
@@ -1088,56 +1104,6 @@ function NewApplicationPageInner() {
                 </>
               )}
             </div>
-
-            {/* Visited Countries Section */}
-            <div className="mt-8">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border-light">
-                <Globe size={16} className="text-primary" />
-                <h3 className="text-sm font-bold text-text-primary">Travel History</h3>
-              </div>
-              
-              {/* Yes/No Question */}
-              <div className="mb-6">
-                <Select 
-                  label="Have you visited other countries in the past 5 years?" 
-                  value={form.visited_other_countries} 
-                  onChange={(e) => {
-                    set("visited_other_countries", e.target.value);
-                    // Clear country selections if user selects "No"
-                    if (e.target.value === "no") {
-                      set("visited_country_1", "");
-                      set("visited_country_2", "");
-                      set("visited_country_3", "");
-                    }
-                  }}
-                >
-                  <option value="">-- Select --</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </Select>
-              </div>
-
-              {/* Countries List - Only show if user selected "Yes" */}
-              {form.visited_other_countries === "yes" && (
-                <div>
-                  <p className="text-xs text-text-muted mb-4">List up to 3 countries you have visited in the past 5 years</p>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <Select label="Country 1" value={form.visited_country_1} onChange={(e) => set("visited_country_1", e.target.value)}>
-                      <option value="">-- Select Country --</option>
-                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </Select>
-                    <Select label="Country 2" value={form.visited_country_2} onChange={(e) => set("visited_country_2", e.target.value)}>
-                      <option value="">-- Select Country --</option>
-                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </Select>
-                    <Select label="Country 3" value={form.visited_country_3} onChange={(e) => set("visited_country_3", e.target.value)}>
-                      <option value="">-- Select Country --</option>
-                      {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                    </Select>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -1249,22 +1215,47 @@ function NewApplicationPageInner() {
                 </div>
               </div>
 
-              {/* Question 3: Contact with Infectious Disease */}
+              {/* Question 3: Travel to Affected Countries */}
               <div className={`p-5 rounded-xl border transition-colors ${errors.health_contact_infectious ? "border-danger/30 bg-danger/3" : "border-border-light bg-surface/50"}`}>
                 <div className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-lg bg-success/8 flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-xs font-bold text-success">3</span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-text-primary mb-3">Have you been in close contact with anyone diagnosed with an infectious disease in the past 21 days? *</p>
+                    <p className="text-sm font-medium text-text-primary mb-3">Have you travelled to any country or region affected by infectious diseases or public health alerts in the past 14 days? *</p>
                     <Select value={form.health_contact_infectious || ""} onChange={(e) => set("health_contact_infectious", e.target.value)} error={errors.health_contact_infectious} required>
                       <option value="">Select</option>
                       <option value="no">No</option>
                       <option value="yes">Yes</option>
                     </Select>
+                    <p className="text-xs text-text-muted mt-2">
+                      For the latest list of affected countries or regions, please refer to the official public health advisory:{" "}
+                      <a href="https://www.ghs.gov.gh" target="_blank" rel="noopener noreferrer" className="text-info hover:underline">Ghana Health Service</a>
+                      {" "}or{" "}
+                      <a href="https://www.who.int" target="_blank" rel="noopener noreferrer" className="text-info hover:underline">WHO</a>
+                    </p>
                   </div>
                 </div>
               </div>
+
+              {/* Conditional: List countries if Yes */}
+              {form.health_contact_infectious === "yes" && (
+                <div className="p-5 rounded-xl border border-warning/30 bg-warning/5">
+                  <div className="flex items-start gap-3">
+                    <Info size={18} className="text-warning shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-text-primary mb-3">Please list the countries visited:</p>
+                      <Textarea
+                        value={form.health_condition_details || ""}
+                        onChange={(e) => set("health_condition_details", e.target.value)}
+                        placeholder="e.g., Country 1, Country 2, Country 3..."
+                        rows={3}
+                      />
+                      <p className="text-xs text-text-muted mt-2">Please list all countries or regions you visited in the past 14 days that are affected by infectious diseases or public health alerts.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Question 4: Yellow Fever Vaccination */}
               <div className={`p-5 rounded-xl border transition-colors ${errors.health_yellow_fever_vaccinated ? "border-danger/30 bg-danger/3" : "border-border-light bg-surface/50"}`}>
@@ -1437,7 +1428,6 @@ function NewApplicationPageInner() {
                   {form.port_of_entry && <div><p className="text-xs text-text-muted">Port of Entry</p><p className="text-sm font-medium text-text-primary">{optLabel(PORTS_OF_ENTRY, form.port_of_entry)}</p></div>}
                   {form.destination_city && <div><p className="text-xs text-text-muted">Destination</p><p className="text-sm font-medium text-text-primary">{optLabel(DESTINATION_CITIES, form.destination_city)}</p></div>}
                   {form.accommodation_type && <div><p className="text-xs text-text-muted">Accommodation</p><p className="text-sm font-medium text-text-primary">{optLabel(ACCOMMODATION_OPTIONS, form.accommodation_type)}</p></div>}
-                  {form.visited_other_countries === "yes" && <div className="sm:col-span-2"><p className="text-xs text-text-muted">Recently Visited Countries</p><p className="text-sm font-medium text-text-primary">{[form.visited_country_1, form.visited_country_2, form.visited_country_3].filter(Boolean).map(c => countryName(c!)).join(", ") || "None listed"}</p></div>}
                   {form.purpose_of_visit && <div className="sm:col-span-2"><p className="text-xs text-text-muted">Purpose</p><p className="text-sm font-medium text-text-primary">{form.purpose_of_visit}</p></div>}
                 </div>
               </div>
@@ -1539,6 +1529,7 @@ function NewApplicationPageInner() {
         visaTypeName={selVT?.name || ""} />
 
       <PaymentModal open={showPaymentModal} onClose={() => setShowPaymentModal(false)} onPay={handlePay}
+        onPayLater={handlePayLater}
         totalFee={fees.total}
         breakdown={[
           { label: `Base Fee (${form.entry_type === "multiple" ? "Multiple" : "Single"} Entry)`, amount: fees.base },

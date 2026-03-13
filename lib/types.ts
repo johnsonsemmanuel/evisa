@@ -27,6 +27,7 @@ export interface User {
   agency: Agency | null;
   locale: "en" | "fr";
   permissions?: string[];
+  mfa_mission_id?: number;
 }
 
 export interface AuthResponse {
@@ -277,6 +278,7 @@ export interface GisMetrics {
   sla_breaches: number;
   review_queue: number;
   approval_queue: number;
+  flagged_etas: number;
 }
 
 export interface MfaMetrics {
@@ -291,6 +293,7 @@ export interface MfaMetrics {
   sla_breaches: number;
   review_queue: number;
   approval_queue: number;
+  flagged_etas: number;
 }
 
 export interface AdminOverview {

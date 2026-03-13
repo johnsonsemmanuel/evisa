@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -64,12 +64,14 @@ export default function BorderPortalPage() {
   const { data: userProfile } = useQuery({
     queryKey: ["user-profile"],
     queryFn: () => api.get("/user/profile").then((r) => r.data),
-    onSuccess: (data) => {
-      if (data?.role) {
-        setUserRole(data.role);
-      }
-    },
   });
+
+  // Set user role when profile data is loaded
+  useEffect(() => {
+    if (userProfile?.role) {
+      setUserRole(userProfile.role);
+    }
+  }, [userProfile]);
 
   const handleVerify = async () => {
     setLoading(true);
@@ -99,7 +101,7 @@ export default function BorderPortalPage() {
           entry_type: "single", // Default
           valid_until: response.data.valid_until,
           approved_on: new Date().toISOString().split('T')[0],
-        } : null,
+        } : undefined,
         alerts: response.data.status !== "AUTHORIZED" ? [{ type: "warning", message: response.data.message }] : [],
       };
       

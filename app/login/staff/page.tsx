@@ -18,6 +18,9 @@ const roleRedirect: Record<string, string> = {
   MFA_REVIEWING_OFFICER: "/dashboard/mfa",
   MFA_APPROVAL_OFFICER: "/dashboard/mfa",
   MFA_ADMIN: "/dashboard/mfa",
+  // Border roles
+  immigration_officer: "/dashboard/border",
+  airline_staff: "/dashboard/border",
   // Admin
   SYSTEM_ADMIN: "/dashboard/admin",
   // Fallbacks
@@ -42,10 +45,11 @@ export default function StaffLoginPage() {
       await login(email, password);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-      // Check if user is staff (GIS or MFA)
+      // Check if user is staff (GIS, MFA, Border, or Airline)
       const staffRoles = [
         "GIS_REVIEWING_OFFICER", "GIS_APPROVAL_OFFICER", "GIS_ADMIN",
         "MFA_REVIEWING_OFFICER", "MFA_APPROVAL_OFFICER", "MFA_ADMIN",
+        "immigration_officer", "airline_staff",
         "SYSTEM_ADMIN"
       ];
       if (!staffRoles.includes(user.role)) {
